@@ -19,7 +19,7 @@ packaging/helpers/timeshift-on-demand-cronfix-helper usr/lib/timeshift-on-demand
 packaging/helpers/timeshift-on-demand-list-helper usr/lib/timeshift-on-demand/
 packaging/bin/timeshift-on-demand-gui-monitor usr/lib/timeshift-on-demand/
 
-packaging/polkit/org.timeshiftondemand.app.policy usr/share/polkit-1/actions/
+packaging/polkit/io.github.11dash11.timeshiftondemand.policy usr/share/polkit-1/actions/
 
 packaging/timeshift-on-demand.desktop usr/share/applications/
 packaging/timeshift-on-demand-autostart.desktop etc/xdg/autostart/

@@ -11,10 +11,10 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev7`). Tested on
-> Zorin OS 18.1 (Ubuntu 24.04-based). The reverse-DNS namespace used for
-> its polkit actions is still a placeholder — see
-> [Known limitations](#known-limitations).
+> **Status:** early, personal-use development (`0.1.0~dev8`). Tested on
+> Zorin OS 18.1 (Ubuntu 24.04-based) — see
+> [Known limitations](#known-limitations) for what's still rough around
+> the edges.
 
 **Full documentation:** [Installation](docs/installation.md) ·
 [Usage guide](docs/usage.md) · [Troubleshooting](docs/troubleshooting.md)
@@ -156,9 +156,9 @@ exactly one thing:
 
 | Action | Does |
 |---|---|
-| `org.timeshiftondemand.app.backup` | Runs `timeshift --create`, with the crash-tolerance workaround for a known upstream progress-parser bug |
-| `org.timeshiftondemand.app.cronfix` | Disables a reappeared legacy cron file (only when Timeshift's own scheduling is actually off) |
-| `org.timeshiftondemand.app.list` | Runs `timeshift --list` — Timeshift requires root for this unconditionally, even for a read-only listing |
+| `io.github.11dash11.timeshiftondemand.backup` | Runs `timeshift --create`, with the crash-tolerance workaround for a known upstream progress-parser bug |
+| `io.github.11dash11.timeshiftondemand.cronfix` | Disables a reappeared legacy cron file (only when Timeshift's own scheduling is actually off) |
+| `io.github.11dash11.timeshiftondemand.list` | Runs `timeshift --list` — Timeshift requires root for this unconditionally, even for a read-only listing |
 
 ## What this project deliberately doesn't do
 
@@ -187,10 +187,6 @@ exactly one thing:
   session with no special handling needed). Tested and working on
   Zorin/GNOME + Wayland; may need adjustment on other desktop
   environments.
-- The `org.timeshiftondemand.app` namespace used for the polkit actions
-  and the GTK application ID is still a placeholder — a real
-  reverse-DNS namespace would replace it if this ever moves beyond
-  personal use.
 
 ## License
 

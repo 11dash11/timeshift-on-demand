@@ -19,8 +19,8 @@
 #
 # Deliberately argument-free, same reasoning as the other two helpers.
 # This is the exact program path named in
-# org.timeshiftondemand.app.list's polkit exec.path annotation
-# (packaging/polkit/org.timeshiftondemand.app.policy):
+# io.github.11dash11.timeshiftondemand.list's polkit exec.path annotation
+# (packaging/polkit/io.github.11dash11.timeshiftondemand.policy):
 #
 #   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
 

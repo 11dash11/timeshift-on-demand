@@ -378,7 +378,7 @@ class TimeshiftCompanionApp(Gtk.Application):
     def __init__(self):
         # Placeholder namespace pending a real reverse-DNS ID once
         # published — see PROJECT.md, "Naming".
-        super().__init__(application_id="org.timeshiftondemand.app")
+        super().__init__(application_id="io.github.11dash11.timeshiftondemand")
         self.window: TimeshiftCompanionWindow | None = None
 
     def do_activate(self) -> None:

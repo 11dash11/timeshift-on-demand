@@ -11,9 +11,9 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
 ```
 
 - No arguments, ever — see the helper's own header comment for why.
-- Resolves to polkit action `org.timeshiftondemand.app.backup` via the
+- Resolves to polkit action `io.github.11dash11.timeshiftondemand.backup` via the
   `org.freedesktop.policykit.exec.path` annotation in
-  `packaging/polkit/org.timeshiftondemand.app.policy` — this is automatic;
+  `packaging/polkit/io.github.11dash11.timeshiftondemand.policy` — this is automatic;
   callers never reference the action id directly, just the exec path.
 - Exit code contract: `0` = snapshot created (including the exit-134
   tolerated case); any other code = real failure. stdout/stderr both
@@ -33,7 +33,7 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
 pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
 ```
 
-- No arguments. Resolves to `org.timeshiftondemand.app.cronfix`.
+- No arguments. Resolves to `io.github.11dash11.timeshiftondemand.cronfix`.
 - Exit code is whatever `mv`/`systemctl reload cron` returns; stdout
   carries one human-readable line either way (fixed vs. nothing-to-do).
 - The **read side** (`check_cron_integrity()` in `scheduling.py`) stays
@@ -48,7 +48,7 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
 pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
 ```
 
-- No arguments. Resolves to `org.timeshiftondemand.app.list`.
+- No arguments. Resolves to `io.github.11dash11.timeshiftondemand.list`.
 - Confirmed (2026-08-29 testing): `timeshift --list` refuses
   unconditionally without root on every install, not just this machine —
   only `--version`/`--help` work unprivileged. This helper is the
@@ -116,12 +116,13 @@ Not part of this pass — tracked in `PROJECT.md`'s status checklist:
 - ~~Real Maintainer/Homepage/Source in `debian/control`,
   `debian/changelog`, `debian/copyright`~~ — done, points at the
   published GitHub repo now.
-- Real reverse-DNS namespace in place of `org.timeshiftondemand.app.*`
-  once a GitHub org/handle is claimed — touches the polkit action ids,
-  the helper install path (`/usr/lib/timeshift-on-demand/` could stay as
-  a plain product-name path even after the namespace firms up — the
-  polkit *action id* is the part that must match the final namespace,
-  not necessarily the filesystem path).
+- ~~Real reverse-DNS namespace in place of `org.timeshiftondemand.app.*`~~
+  — done, renamed to `io.github.11dash11.timeshiftondemand.*` now that
+  the GitHub identity exists. Touched the polkit action ids and the GTK
+  `application_id`; the helper install path
+  (`/usr/lib/timeshift-on-demand/`) deliberately stayed a plain
+  product-name path, as planned — only the polkit *action id* needed to
+  match the namespace, not the filesystem path.
 - A real `debian/timeshift-on-demand.1` or install-time smoke test
   hasn't been attempted yet — this skeleton has not been run through
   `dpkg-buildpackage`/`lintian`.

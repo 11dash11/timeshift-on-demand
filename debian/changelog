@@ -1,3 +1,20 @@
+timeshift-on-demand (0.1.0~dev8) UNRELEASED; urgency=low
+
+  * Resolved the placeholder reverse-DNS namespace: org.timeshiftondemand.app
+    -> io.github.11dash11.timeshiftondemand, now that the project is
+    published at github.com/11dash11/timeshift-on-demand. Renamed the
+    polkit policy file and its three action ids
+    (io.github.11dash11.timeshiftondemand.{backup,cronfix,list}), and
+    app.py's Gtk.Application application_id. Left the .desktop filenames
+    and the /usr/lib/timeshift-on-demand/ helper install path unchanged
+    (plain product-name paths) -- only the polkit action id and
+    GApplication id needed to match the namespace, not the filesystem
+    layout. No functional behavior change; requires a package
+    reinstall to take effect on already-installed machines, since the
+    old and new action ids are not the same polkit action.
+
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 02 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev7) UNRELEASED; urgency=low
 
   * Fixed a real false-negative on the login/resume auto-prompt and the

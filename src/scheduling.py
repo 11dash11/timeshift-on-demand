@@ -6,7 +6,7 @@ check-timeshift-cron.sh — it only reads world-readable paths, no
 privilege needed. Fix side goes through a single `pkexec` call to
 Companion's own bundled cron-fix helper
 (packaging/helpers/timeshift-on-demand-cronfix-helper), resolved via the
-org.timeshiftondemand.app.cronfix polkit action — see packaging/README.md
+io.github.11dash11.timeshiftondemand.cronfix polkit action — see packaging/README.md
 for the invocation contract — instead of four separate `sudo` commands.
 
 Deliberately does NOT re-enable timeshift-backup.timer. That unit was

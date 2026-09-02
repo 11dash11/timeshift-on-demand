@@ -110,7 +110,7 @@ for more on how these work.
 ```bash
 dpkg -l timeshift-on-demand              # package status = ii
 which timeshift-on-demand                # /usr/bin/timeshift-on-demand
-pkaction --action-id org.timeshiftondemand.app.backup   # confirms polkit picked up the policy
+pkaction --action-id io.github.11dash11.timeshiftondemand.backup   # confirms polkit picked up the policy
 ```
 
 If the tray icon doesn't appear after launching, that's expected on

@@ -9,7 +9,7 @@ window).
 
 The privileged call now goes through `pkexec` to Companion's own bundled
 helper script (packaging/helpers/timeshift-on-demand-backup-helper),
-resolved via the org.timeshiftondemand.app.backup polkit action — see
+resolved via the io.github.11dash11.timeshiftondemand.backup polkit action — see
 packaging/README.md for the exact invocation contract. This replaces the
 first-pass `sudo /usr/local/sbin/timeshift-backup-root.sh` call, which
 assumed a personal-machine path that isn't installed by the package. The

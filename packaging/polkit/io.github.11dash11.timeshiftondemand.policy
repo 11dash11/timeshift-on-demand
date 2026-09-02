@@ -8,14 +8,16 @@
   but scoped to Companion's two specific helper scripts instead of the
   whole timeshift-gtk process — see PROJECT.md, "Privilege model".
 
-  org.timeshiftondemand.app.* is a placeholder namespace pending a real
-  reverse-DNS ID once this is published (see PROJECT.md, "Naming").
+  io.github.11dash11.timeshiftondemand.* is the project's real reverse-DNS
+  namespace, based on its published GitHub identity (io.github.<user>.<app>,
+  the standard freedesktop/Flatpak convention for a project with no owned
+  domain). Replaced an earlier org.timeshiftondemand.app.* placeholder.
 -->
 <policyconfig>
   <vendor>Timeshift On Demand</vendor>
   <vendor_url>https://github.com/11dash11/timeshift-on-demand</vendor_url>
 
-  <action id="org.timeshiftondemand.app.backup">
+  <action id="io.github.11dash11.timeshiftondemand.backup">
     <message gettext-domain="timeshift-on-demand">Authentication is required to run an on-demand Timeshift backup</message>
     <description>Run the Timeshift On Demand backup helper as Administrator</description>
     <icon_name>timeshift</icon_name>
@@ -28,7 +30,7 @@
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 
-  <action id="org.timeshiftondemand.app.cronfix">
+  <action id="io.github.11dash11.timeshiftondemand.cronfix">
     <message gettext-domain="timeshift-on-demand">Authentication is required to disable a reappeared legacy Timeshift cron file</message>
     <description>Run the Timeshift On Demand cron-integrity fix helper as Administrator</description>
     <icon_name>timeshift</icon_name>
@@ -41,7 +43,7 @@
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 
-  <action id="org.timeshiftondemand.app.list">
+  <action id="io.github.11dash11.timeshiftondemand.list">
     <message gettext-domain="timeshift-on-demand">Authentication is required to read the Timeshift snapshot list</message>
     <description>Run the Timeshift On Demand snapshot-list helper as Administrator</description>
     <icon_name>timeshift</icon_name>

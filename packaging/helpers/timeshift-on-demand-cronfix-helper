@@ -17,8 +17,8 @@
 # "Maintenance tab — Fix Scheduling" for the decision record.
 #
 # Deliberately argument-free, same reasoning as the backup helper. This is
-# the exact program path named in org.timeshiftondemand.app.cronfix's
-# polkit exec.path annotation (packaging/polkit/org.timeshiftondemand.app.policy):
+# the exact program path named in io.github.11dash11.timeshiftondemand.cronfix's
+# polkit exec.path annotation (packaging/polkit/io.github.11dash11.timeshiftondemand.policy):
 #
 #   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
 

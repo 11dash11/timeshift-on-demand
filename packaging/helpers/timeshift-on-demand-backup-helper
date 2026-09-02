@@ -25,8 +25,8 @@
 # check says.
 #
 # Deliberately argument-free. This is the exact program path named in
-# org.timeshiftondemand.app.backup's polkit exec.path annotation
-# (packaging/polkit/org.timeshiftondemand.app.policy) — invoked as:
+# io.github.11dash11.timeshiftondemand.backup's polkit exec.path annotation
+# (packaging/polkit/io.github.11dash11.timeshiftondemand.policy) — invoked as:
 #
 #   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
 #
