@@ -1,10 +1,10 @@
 Source: timeshift-on-demand
 Section: admin
 Priority: optional
-Maintainer: PLACEHOLDER Name <placeholder@example.invalid>
+Maintainer: JShin <11dash11@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
-Homepage: https://github.com/PLACEHOLDER/timeshift-on-demand
+Homepage: https://github.com/11dash11/timeshift-on-demand
 Rules-Requires-Root: no
 
 Package: timeshift-on-demand

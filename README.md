@@ -12,9 +12,9 @@ browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
 > **Status:** early, personal-use development (`0.1.0~dev7`). Tested on
-> Zorin OS 18.1 (Ubuntu 24.04-based). Maintainer contact, project
-> homepage, and the reverse-DNS namespace used for its polkit actions
-> are all placeholders for now — see [Known limitations](#known-limitations).
+> Zorin OS 18.1 (Ubuntu 24.04-based). The reverse-DNS namespace used for
+> its polkit actions is still a placeholder — see
+> [Known limitations](#known-limitations).
 
 **Full documentation:** [Installation](docs/installation.md) ·
 [Usage guide](docs/usage.md) · [Troubleshooting](docs/troubleshooting.md)
@@ -187,10 +187,10 @@ exactly one thing:
   session with no special handling needed). Tested and working on
   Zorin/GNOME + Wayland; may need adjustment on other desktop
   environments.
-- `Maintainer`, `Homepage`, and `Source` in `debian/control` are
-  placeholders, as is the `org.timeshiftondemand.app` namespace used for
-  the polkit actions and the GTK application ID — none of these are
-  final yet.
+- The `org.timeshiftondemand.app` namespace used for the polkit actions
+  and the GTK application ID is still a placeholder — a real
+  reverse-DNS namespace would replace it if this ever moves beyond
+  personal use.
 
 ## License
 

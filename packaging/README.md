@@ -113,8 +113,9 @@ Not part of this pass — tracked in `PROJECT.md`'s status checklist:
 - `src/` rework (sudo → pkexec per above, hardcoded UUID/paths → Settings
   tab + XDG config, trimmed systemd unit list, dropped timer step, new
   Settings tab UI).
-- Real Maintainer/Homepage/Source in `debian/control`,
-  `debian/changelog`, `debian/copyright` (all currently `PLACEHOLDER`).
+- ~~Real Maintainer/Homepage/Source in `debian/control`,
+  `debian/changelog`, `debian/copyright`~~ — done, points at the
+  published GitHub repo now.
 - Real reverse-DNS namespace in place of `org.timeshiftondemand.app.*`
   once a GitHub org/handle is claimed — touches the polkit action ids,
   the helper install path (`/usr/lib/timeshift-on-demand/` could stay as

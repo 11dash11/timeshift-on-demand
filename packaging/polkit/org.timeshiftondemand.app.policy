@@ -13,7 +13,7 @@
 -->
 <policyconfig>
   <vendor>Timeshift On Demand</vendor>
-  <vendor_url>https://github.com/PLACEHOLDER/timeshift-on-demand</vendor_url>
+  <vendor_url>https://github.com/11dash11/timeshift-on-demand</vendor_url>
 
   <action id="org.timeshiftondemand.app.backup">
     <message gettext-domain="timeshift-on-demand">Authentication is required to run an on-demand Timeshift backup</message>

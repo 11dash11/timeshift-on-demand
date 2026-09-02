@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: timeshift-on-demand
-Source: https://github.com/PLACEHOLDER/timeshift-on-demand
+Source: https://github.com/11dash11/timeshift-on-demand
 Comment:
  Timeshift On Demand is an independent companion application. It depends
  on, but does not include, modify, or vendor, the official Timeshift
@@ -8,7 +8,7 @@ Comment:
  and contributors, GPL-3+).
 
 Files: *
-Copyright: 2026 PLACEHOLDER Name
+Copyright: 2026 JShin
 License: GPL-3+
 
 License: GPL-3+

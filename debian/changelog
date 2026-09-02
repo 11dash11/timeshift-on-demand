@@ -23,7 +23,7 @@ timeshift-on-demand (0.1.0~dev7) UNRELEASED; urgency=low
     usage.md that the Maintenance tab's "Fix Scheduling" button doesn't
     visually change when it's correctly refusing to act as a no-op.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Wed, 02 Sep 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 02 Sep 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev6) UNRELEASED; urgency=low
 
@@ -43,7 +43,7 @@ timeshift-on-demand (0.1.0~dev6) UNRELEASED; urgency=low
     evidence, correcting an earlier wrong claim) -- added to the
     Dashboard's advisory label and README.md's Known Limitations.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 30 Aug 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev5) UNRELEASED; urgency=low
 
@@ -71,7 +71,7 @@ timeshift-on-demand (0.1.0~dev5) UNRELEASED; urgency=low
     Verified locally: streams log lines live, auto-closes on success
     with the doneflag cleaned up, stays open indefinitely on failure.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 30 Aug 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev4) UNRELEASED; urgency=low
 
@@ -93,7 +93,7 @@ timeshift-on-demand (0.1.0~dev4) UNRELEASED; urgency=low
     drive connected reached the zenity confirmation dialog, which was
     visually confirmed on-screen.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 30 Aug 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev3) UNRELEASED; urgency=low
 
@@ -127,7 +127,7 @@ timeshift-on-demand (0.1.0~dev3) UNRELEASED; urgency=low
     confirmed relevant via GNOME Software flagging the installed package
     "Unknown Licence" in its own app-details page.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 30 Aug 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev2) UNRELEASED; urgency=low
 
@@ -157,7 +157,7 @@ timeshift-on-demand (0.1.0~dev2) UNRELEASED; urgency=low
     verification log. Not yet attempted: dpkg-buildpackage/lintian, and
     a real suspend/resume test of the resume-hook.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sat, 29 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sat, 29 Aug 2026 00:00:00 +0000
 
 timeshift-on-demand (0.1.0~dev1) UNRELEASED; urgency=low
 
@@ -170,4 +170,4 @@ timeshift-on-demand (0.1.0~dev1) UNRELEASED; urgency=low
     been reworked to call these helpers via pkexec or to use per-user
     XDG config. Not build-clean yet; see PROJECT.md status checklist.
 
- -- PLACEHOLDER Name <placeholder@example.invalid>  Sat, 29 Aug 2026 00:00:00 +0000
+ -- JShin <11dash11@users.noreply.github.com>  Sat, 29 Aug 2026 00:00:00 +0000
