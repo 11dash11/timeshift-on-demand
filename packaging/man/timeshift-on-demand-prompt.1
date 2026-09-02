@@ -1,0 +1,31 @@
+.TH TIMESHIFT-ON-DEMAND-PROMPT 1 "August 2026" "timeshift-on-demand" "User Commands"
+.SH NAME
+timeshift-on-demand-prompt \- zenity-confirmed on-demand Timeshift backup, headless
+.SH SYNOPSIS
+.B timeshift-on-demand-prompt
+.SH DESCRIPTION
+Reads the backup drive configured via the
+.BR timeshift-on-demand (1)
+Settings tab, waits for it to mount, asks for confirmation with
+.BR zenity (1),
+and on confirmation spawns a live monitor terminal window before
+running the backup via
+.BR pkexec (1).
+.PP
+Not meant to be run interactively by hand \(em it is invoked
+automatically at login (via an XDG autostart entry) and after resume
+from suspend (via a systemd-logind sleep hook), independent of whether
+the main
+.BR timeshift-on-demand (1)
+window is open.
+.SH FILES
+.TP
+.I ~/.config/timeshift-on-demand/config.json
+Read for the configured backup drive UUID.
+.TP
+.I ~/.local/share/timeshift-on-demand/backup.log
+Backup run history, shared with the GUI app.
+.SH SEE ALSO
+.BR timeshift-on-demand (1),
+.BR zenity (1),
+.BR pkexec (1)

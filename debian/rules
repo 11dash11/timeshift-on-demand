@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# dh_fixperms' bin/sbin-style auto-executable directories don't reliably
+# cover /usr/lib/timeshift-on-demand/ or /usr/lib/systemd/system-sleep/ —
+# and systemd-logind silently *skips* (not errors on) a non-executable
+# sleep hook, which would be a silent failure mode rather than a build
+# error. Fix all of this package's scripts explicitly rather than trust
+# debhelper's defaults to have matched every path used here.
+override_dh_fixperms:
+	dh_fixperms
+	chmod 0755 debian/timeshift-on-demand/usr/bin/timeshift-on-demand
+	chmod 0755 debian/timeshift-on-demand/usr/bin/timeshift-on-demand-prompt
+	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
+	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
+	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
+	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor
+	chmod 0755 debian/timeshift-on-demand/usr/lib/systemd/system-sleep/timeshift-on-demand-resume-hook

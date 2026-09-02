@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# timeshift-on-demand-cronfix-helper — privileged worker invoked via pkexec.
+#
+# Companion's own cron-integrity watchdog (unprivileged — reads only
+# world-readable paths, ports check-timeshift-cron.sh's logic) detects
+# when a legacy /etc/cron.d/timeshift-hourly file has reappeared,
+# bypassing the disabled/on-demand-only setup. This helper is the one
+# privileged action taken in response: rename it back to its disabled
+# form and restart cron so the change takes effect immediately.
+#
+# Deliberately does NOT re-enable any systemd timer. timeshift-backup.timer
+# was intentionally removed (see
+# projects/script-consolidation/docs/decisions-log.md, item 12) and this
+# helper must never resurrect it — that is the one behavior change from
+# the old fix-timeshift-scheduling.sh this replaces. See PROJECT.md,
+# "Maintenance tab — Fix Scheduling" for the decision record.
+#
+# Deliberately argument-free, same reasoning as the backup helper. This is
+# the exact program path named in org.timeshiftondemand.app.cronfix's
+# polkit exec.path annotation (packaging/polkit/org.timeshiftondemand.app.policy):
+#
+#   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
+
+set -u
+
+LEGACY="/etc/cron.d/timeshift-hourly"
+DISABLED="/etc/cron.d/timeshift-hourly.disabled"
+
+if [[ -e "$LEGACY" ]]; then
+    mv "$LEGACY" "$DISABLED"
+    # `systemctl reload cron` failed on real hardware (Samsung RF511,
+    # 2026-08-30 testing): "Job type reload is not applicable for unit
+    # cron.service" — that cron package's systemd unit has no ExecReload=
+    # directive. `restart` is universally supported (every unit with
+    # ExecStart= supports it) and achieves the same goal here — cron
+    # re-reading /etc/cron.d/ — so use that instead of assuming reload
+    # support that isn't guaranteed across cron implementations.
+    systemctl restart cron
+    echo "Disabled reappeared legacy cron file: $LEGACY -> $DISABLED"
+else
+    echo "No legacy cron file present at $LEGACY — nothing to do."
+fi

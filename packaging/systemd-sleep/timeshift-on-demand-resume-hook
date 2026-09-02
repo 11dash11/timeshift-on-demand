@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# timeshift-on-demand-resume-hook — systemd-logind sleep hook.
+#
+# Installed to /usr/lib/systemd/system-sleep/ (systemd-logind's own
+# convention — no separate service/timer needed; systemd-logind calls
+# every executable script found there automatically before suspend
+# ($1=pre) and after resume ($1=post), passing the sleep operation as
+# $2). Only acts on $1=post: asks each active graphical session's user
+# whether to run an on-demand backup, via timeshift-on-demand-prompt
+# (the same zenity+monitor script the login autostart entry uses).
+#
+# THIS IS THE MOST ENVIRONMENT-FRAGILE PART OF THE WHOLE PACKAGE. This
+# script runs as root, with none of a logged-in user's session
+# environment (no DISPLAY/WAYLAND_DISPLAY/DBUS_SESSION_BUS_ADDRESS) —
+# reaching into a real GUI session from here is inherently a "borrow the
+# environment of a process we know is in that session" trick, not
+# something with one guaranteed-correct API across every desktop
+# environment.
+#
+# CONFIRMED BROKEN, THEN FIXED TWICE, via real suspend/resume tests
+# (Samsung RF511, 2026-08-30):
+#
+# 1. The first version launched the prompt via `runuser -u "$user" --
+#    ...`, which creates a brand-new PAM login session for that user.
+#    systemd-logind killed that ephemeral session almost immediately
+#    ("Session terminated, killing shell... ...killed." in this script's
+#    own log) — before timeshift-on-demand-prompt could even start
+#    (confirmed: no corresponding entry in ~/.local/share/
+#    timeshift-on-demand/backup.log at all for that resume).
+# 2. Fixed by launching via `systemd-run --uid=...` instead: a plain
+#    transient *service*, not a login session, so logind had no session
+#    lifecycle to tear down — the prompt itself now started correctly.
+#    But a second, subtler bug then surfaced: when the user confirmed
+#    the backup, the pkexec call inside timeshift-on-demand-prompt
+#    failed ("Error creating textual authentication agent... pkexec
+#    exit 127"). Root cause: `systemd-run --uid=` runs the process as a
+#    plain root-owned system service — it has the right DISPLAY/D-Bus
+#    env vars, but isn't actually a *member* of the user's logind
+#    session (different cgroup tree entirely). pkexec looks up which
+#    graphical polkit agent to use by resolving the calling process's
+#    actual session membership, not its environment variables — with no
+#    real session membership, it found no agent and fell back to a
+#    text-mode one that also failed (no controlling terminal).
+# 3. Fixed by launching through the user's own `systemd --user` manager
+#    instead (`systemd-run --user --machine="$user@.host"`) — this
+#    keeps the process genuinely inside the user's own session-adjacent
+#    unit tree, where pkexec's session lookup resolves correctly, while
+#    still avoiding fix 1's problem (this is a --user *service*, not a
+#    PAM login session, so it's still not subject to logind killing it).
+#
+# Still needs the borrowed DISPLAY/WAYLAND_DISPLAY env vars to actually
+# reach the desktop (XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS are
+# automatically correct for units started by the user's own --user
+# manager, so those no longer need to be borrowed/overridden) — that
+# part of the fragility is unchanged. Re-verify with another real
+# suspend/resume cycle, including actually confirming the dialog and
+# watching the backup itself run, before fully trusting this.
+
+set -u
+
+[[ "${1:-}" == "post" ]] || exit 0
+
+for session_id in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+    state=$(loginctl show-session "$session_id" -p State --value 2>/dev/null)
+    [[ "$state" == "active" ]] || continue
+
+    # Confirmed via real testing (Samsung RF511, 2026-08-30): an SSH
+    # connection can also register as an "active" session (Type=tty) at
+    # the same time as the real desktop session (Type=wayland/x11) —
+    # without this filter, the prompt gets launched once per session,
+    # racing a tty copy (which can never show a GUI dialog) against the
+    # real one for no benefit, and risking two parallel backup attempts
+    # if the drive happens to be mounted.
+    session_type=$(loginctl show-session "$session_id" -p Type --value 2>/dev/null)
+    [[ "$session_type" == "wayland" || "$session_type" == "x11" ]] || continue
+
+    user=$(loginctl show-session "$session_id" -p Name --value 2>/dev/null)
+    [[ -n "$user" ]] || continue
+
+    # The numeric uid itself isn't needed below (--machine= below takes
+    # the username) — this is kept as a validation guard: skip the
+    # session if $user doesn't actually resolve to a real account.
+    id -u "$user" >/dev/null 2>&1 || continue
+
+    # No systemd-logind query returns a session's DISPLAY/WAYLAND_DISPLAY
+    # directly — borrow them from a real process known to belong to that
+    # session (its leader) instead. (DBUS_SESSION_BUS_ADDRESS and
+    # XDG_RUNTIME_DIR used to be borrowed the same way too, but are
+    # automatically correct for units started via the user's own --user
+    # manager below, so no longer need overriding — see header comment.)
+    session_pid=$(loginctl show-session "$session_id" -p Leader --value 2>/dev/null)
+    env_file="/proc/$session_pid/environ"
+    [[ -r "$env_file" ]] || continue
+
+    display=$(tr '\0' '\n' < "$env_file" | sed -n 's/^DISPLAY=//p')
+    wayland_display=$(tr '\0' '\n' < "$env_file" | sed -n 's/^WAYLAND_DISPLAY=//p')
+
+    env_args=()
+    [[ -n "$display" ]] && env_args+=("--setenv=DISPLAY=$display")
+    [[ -n "$wayland_display" ]] && env_args+=("--setenv=WAYLAND_DISPLAY=$wayland_display")
+
+    # --user --machine="$user@.host": run through the user's own
+    # systemd --user manager (not a plain root-side system service, and
+    # not a PAM login session) — see header comment for why this
+    # specific combination is what makes pkexec able to find the right
+    # graphical polkit agent. --collect: clean up this transient unit
+    # automatically once it exits.
+    systemd-run --user --machine="$user@.host" --collect \
+        --unit="timeshift-on-demand-resume-$session_id" \
+        "${env_args[@]}" \
+        -- timeshift-on-demand-prompt \
+        >>/var/log/timeshift-on-demand-resume-hook.log 2>&1
+done
+
+exit 0

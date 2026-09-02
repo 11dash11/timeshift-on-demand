@@ -1,0 +1,17 @@
+# 99-timeshift-on-demand-drive.rules — DRAFTED, NOT ACTIVE.
+#
+# See ../README.md before doing anything with this directory. Not
+# referenced by debian/install — building the package does not ship
+# this file.
+#
+# Generic, not per-user: matches any block device connecting with a
+# filesystem UUID (not one hardcoded UUID the way the old flat-script
+# system's udev rule did), and asks systemd to start a per-device-instance
+# check service, parameterized by that device's own UUID via
+# %E{ID_FS_UUID}. The instance service (see
+# timeshift-on-demand-drive-trigger@.service in this directory) does the
+# actual "is this MY configured backup drive" comparison against each
+# active user's own config.json — nothing here needs regenerating when
+# someone picks a different drive in Companion's Settings tab.
+
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_UUID}!="", TAG+="systemd", ENV{SYSTEMD_WANTS}+="timeshift-on-demand-drive-trigger@%E{ID_FS_UUID}.service"

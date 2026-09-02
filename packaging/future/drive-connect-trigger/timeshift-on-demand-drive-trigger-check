@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# timeshift-on-demand-drive-trigger-check — DRAFTED, NOT ACTIVE.
+#
+# See ../README.md before doing anything with this directory. Not
+# referenced by debian/install — building the package does not ship
+# this file.
+#
+# Invoked as root by the templated system unit
+# timeshift-on-demand-drive-trigger@.service, once per block device
+# "add" event with a filesystem UUID — $1 is that device's UUID, passed
+# via the systemd template instance name (see the udev rule and unit
+# file in this same directory).
+#
+# Deliberately generic: the udev rule and this script are identical for
+# every user and every install, never regenerated or edited per-user or
+# per-drive. All the "is this MY configured backup drive" logic happens
+# here, checking each active graphical session's own
+# ~/.config/timeshift-on-demand/config.json. Session-loop shape and the
+# systemd-run --user --machine= launch mechanism are copied from
+# timeshift-on-demand-resume-hook (see that script's own header comment
+# for why --user --machine= specifically, not runuser or a plain
+# --uid= system service — the same two real bugs found and fixed there
+# would apply equally here if this used a different launch mechanism).
+# If this ever gets activated, consider factoring the shared session-loop
+# logic into one sourced file instead of maintaining two copies.
+
+set -u
+
+connected_uuid="${1:-}"
+[[ -n "$connected_uuid" ]] || exit 0
+
+for session_id in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+    state=$(loginctl show-session "$session_id" -p State --value 2>/dev/null)
+    [[ "$state" == "active" ]] || continue
+
+    session_type=$(loginctl show-session "$session_id" -p Type --value 2>/dev/null)
+    [[ "$session_type" == "wayland" || "$session_type" == "x11" ]] || continue
+
+    user=$(loginctl show-session "$session_id" -p Name --value 2>/dev/null)
+    [[ -n "$user" ]] || continue
+
+    home=$(getent passwd "$user" | cut -d: -f6)
+    [[ -n "$home" ]] || continue
+
+    config_file="$home/.config/timeshift-on-demand/config.json"
+    [[ -r "$config_file" ]] || continue
+
+    configured_uuid=$(python3 -c "
+import json, sys
+try:
+    with open(sys.argv[1], encoding='utf-8') as f:
+        print(json.load(f).get('backup_drive_uuid') or '')
+except Exception:
+    print('')
+" "$config_file" 2>/dev/null)
+
+    [[ "$configured_uuid" == "$connected_uuid" ]] || continue
+
+    # Match found for this session's user — launch the same prompt
+    # script the login/resume triggers use.
+    session_pid=$(loginctl show-session "$session_id" -p Leader --value 2>/dev/null)
+    env_file="/proc/$session_pid/environ"
+    [[ -r "$env_file" ]] || continue
+
+    display=$(tr '\0' '\n' < "$env_file" | sed -n 's/^DISPLAY=//p')
+    wayland_display=$(tr '\0' '\n' < "$env_file" | sed -n 's/^WAYLAND_DISPLAY=//p')
+
+    env_args=()
+    [[ -n "$display" ]] && env_args+=("--setenv=DISPLAY=$display")
+    [[ -n "$wayland_display" ]] && env_args+=("--setenv=WAYLAND_DISPLAY=$wayland_display")
+
+    systemd-run --user --machine="$user@.host" --collect \
+        --unit="timeshift-on-demand-drive-$session_id" \
+        "${env_args[@]}" \
+        -- timeshift-on-demand-prompt \
+        >>/var/log/timeshift-on-demand-resume-hook.log 2>&1
+done
+
+exit 0

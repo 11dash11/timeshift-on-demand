@@ -1,0 +1,27 @@
+# Maps built/source files to their installed locations. Debhelper reads
+# this during `dh_install`. Paths on the left are relative to the source
+# tree root (this project's directory); paths on the right are relative
+# to the package's install root (no leading slash).
+
+src/main.py usr/share/timeshift-on-demand/
+src/app.py usr/share/timeshift-on-demand/
+src/backup_runner.py usr/share/timeshift-on-demand/
+src/config.py usr/share/timeshift-on-demand/
+src/scheduling.py usr/share/timeshift-on-demand/
+src/status.py usr/share/timeshift-on-demand/
+src/tray.py usr/share/timeshift-on-demand/
+
+packaging/bin/timeshift-on-demand usr/bin/
+packaging/bin/timeshift-on-demand-prompt usr/bin/
+
+packaging/helpers/timeshift-on-demand-backup-helper usr/lib/timeshift-on-demand/
+packaging/helpers/timeshift-on-demand-cronfix-helper usr/lib/timeshift-on-demand/
+packaging/helpers/timeshift-on-demand-list-helper usr/lib/timeshift-on-demand/
+packaging/bin/timeshift-on-demand-gui-monitor usr/lib/timeshift-on-demand/
+
+packaging/polkit/org.timeshiftondemand.app.policy usr/share/polkit-1/actions/
+
+packaging/timeshift-on-demand.desktop usr/share/applications/
+packaging/timeshift-on-demand-autostart.desktop etc/xdg/autostart/
+
+packaging/systemd-sleep/timeshift-on-demand-resume-hook usr/lib/systemd/system-sleep/

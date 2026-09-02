@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Timeshift On Demand
+Comment=On-demand Timeshift backup, status, and cron-integrity companion
+Exec=timeshift-on-demand
+Icon=timeshift
+Terminal=false
+Categories=System;
+StartupNotify=true
+Keywords=backup;timeshift;snapshot;

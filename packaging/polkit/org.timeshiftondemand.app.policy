@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Modeled on Timeshift's own policy file
+  (/usr/share/polkit-1/actions/in.teejeetech.pkexec.timeshift.policy),
+  but scoped to Companion's two specific helper scripts instead of the
+  whole timeshift-gtk process — see PROJECT.md, "Privilege model".
+
+  org.timeshiftondemand.app.* is a placeholder namespace pending a real
+  reverse-DNS ID once this is published (see PROJECT.md, "Naming").
+-->
+<policyconfig>
+  <vendor>Timeshift On Demand</vendor>
+  <vendor_url>https://github.com/PLACEHOLDER/timeshift-on-demand</vendor_url>
+
+  <action id="org.timeshiftondemand.app.backup">
+    <message gettext-domain="timeshift-on-demand">Authentication is required to run an on-demand Timeshift backup</message>
+    <description>Run the Timeshift On Demand backup helper as Administrator</description>
+    <icon_name>timeshift</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.timeshiftondemand.app.cronfix">
+    <message gettext-domain="timeshift-on-demand">Authentication is required to disable a reappeared legacy Timeshift cron file</message>
+    <description>Run the Timeshift On Demand cron-integrity fix helper as Administrator</description>
+    <icon_name>timeshift</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <action id="org.timeshiftondemand.app.list">
+    <message gettext-domain="timeshift-on-demand">Authentication is required to read the Timeshift snapshot list</message>
+    <description>Run the Timeshift On Demand snapshot-list helper as Administrator</description>
+    <icon_name>timeshift</icon_name>
+    <defaults>
+      <!-- auth_admin_keep, not auth_admin: this action is a read-only
+           glance the Dashboard may call from more than one place in
+           quick succession (window open, a manual Refresh click, once
+           after a backup completes) — auth_admin would re-prompt every
+           single time, which is exactly the nagging this project has
+           tried to avoid elsewhere. _keep lets polkit cache a successful
+           authentication for its own short default window instead of
+           demanding it again immediately. Deliberately NOT applied to
+           the backup or cronfix actions above — those are consequential
+           writes, where "ask every time" is the safer default. -->
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>

@@ -1,0 +1,132 @@
+#!/bin/bash
+#
+# timeshift-on-demand-prompt — zenity confirm + live-monitor backup runner.
+#
+# Invoked by the login autostart entry
+# (packaging/timeshift-on-demand-autostart.desktop) and by the
+# resume-from-suspend hook
+# (packaging/systemd-sleep/timeshift-on-demand-resume-hook), always as
+# the logged-in user — never as root itself. The one privileged step,
+# the actual backup, goes through `pkexec` below, same as the GUI's own
+# Backup tab. Entirely independent of whether the Companion GTK app
+# (timeshift-on-demand) is open or not — this script never touches it,
+# so there's no single-instance/GApplication concern to worry about here.
+#
+# Ports the previously unpromoted timeshift-ondemand-backup.sh draft's
+# "live monitor window" behavior (see projects/timeshift-monitor-backup/)
+# with two portability fixes: `sudo` -> `pkexec` against Companion's own
+# bundled helper, and the hardcoded drive UUID replaced by whatever the
+# user configured in Companion's Settings tab
+# (~/.config/timeshift-on-demand/config.json — see src/config.py).
+#
+# No time-window restriction (the old script's 16:00-17:30
+# scheduled-backup-slot block) — on-demand runs are always allowed, per
+# PROJECT.md. Shares its log file with the GUI's own BackupRunner
+# (src/backup_runner.py) so both paths' history lands in one place.
+
+LOGFILE="${XDG_DATA_HOME:-$HOME/.local/share}/timeshift-on-demand/backup.log"
+GUI_MONITOR="/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor"
+BACKUP_HELPER="/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/timeshift-on-demand/config.json"
+
+mkdir -p "$(dirname "$LOGFILE")"
+
+log() {
+    local level=$1; shift
+    echo "$(date): [$level] $*" >> "$LOGFILE"
+}
+log_info() { log "INFO" "$@"; }
+log_error() { log "ERROR" "$@"; }
+
+log_info "Prompt script started"
+
+DRIVE_UUID=$(python3 -c "
+import json, sys
+try:
+    with open(sys.argv[1], encoding='utf-8') as f:
+        print(json.load(f).get('backup_drive_uuid') or '')
+except Exception:
+    print('')
+" "$CONFIG_FILE" 2>/dev/null)
+
+if [[ -z "$DRIVE_UUID" ]]; then
+    log_error "No backup drive configured (open Timeshift On Demand's Settings tab) — exiting, nothing done."
+    exit 0
+fi
+
+# Wait for the drive to be mounted (max 36 attempts, 5 seconds apart =
+# 180s). Bumped up from the original 30s budget after real resume
+# evidence: this class of USB enclosure can take over two minutes to
+# finish ext4 journal recovery after an unclean suspend-unmount before
+# it's actually mountable (observed up to 129s on 2026-08-31).
+BACKUP_MOUNT_POINT=""
+for i in {1..36}; do
+    BACKUP_MOUNT_POINT=$(findmnt -nr -S UUID="$DRIVE_UUID" -o TARGET)
+    if [[ -n "$BACKUP_MOUNT_POINT" ]]; then
+        log_info "Backup drive mounted at $BACKUP_MOUNT_POINT."
+        break
+    else
+        log_info "Waiting for drive to mount (attempt $i)..."
+        sleep 5
+    fi
+done
+
+if [[ -z "$BACKUP_MOUNT_POINT" ]]; then
+    log_error "Backup drive not mounted after wait, exiting (treated as non-fatal)."
+    exit 0
+fi
+
+log_info "Showing confirmation dialog to user."
+zenity --question --title="Timeshift On Demand" \
+    --text="Do you want to start the on-demand Timeshift backup now?" --width=300
+response=$?
+
+if [[ $response -ne 0 ]]; then
+    log_info "User cancelled the backup."
+    exit 0
+fi
+
+log_info "User confirmed backup, starting."
+
+DONEFLAG=$(mktemp -u /tmp/timeshift-on-demand-status.XXXXXX)
+rm -f "$DONEFLAG"   # mktemp -u shouldn't create it, but be sure
+MONITOR_LAUNCHED=false
+
+# A single-purpose GTK window, not a spawned terminal — no
+# gnome-terminal/xterm dependency at all (see timeshift-on-demand-gui-monitor's
+# own header for why this replaced the old terminal-based monitor).
+python3 "$GUI_MONITOR" "$LOGFILE" "$DONEFLAG" &
+MONITOR_LAUNCHED=true
+
+log_info "Running backup helper via pkexec..."
+ionice -c2 -n7 nice -n10 pkexec "$BACKUP_HELPER" >> "$LOGFILE" 2>&1
+ts_status=$?
+
+# Signal the monitor window (if running) that the backup has finished;
+# if no monitor was launched, there's nothing to signal — clean up
+# instead of leaving an orphaned sentinel file in /tmp.
+if $MONITOR_LAUNCHED; then
+    echo "STATUS=$ts_status" > "$DONEFLAG"
+else
+    rm -f "$DONEFLAG"
+fi
+
+if [[ $ts_status -eq 0 ]]; then
+    log_info "Backup completed successfully."
+    notify-send -i drive-harddisk "Timeshift On Demand" \
+        "On-demand backup completed successfully." 2>/dev/null
+elif [[ $ts_status -eq 126 ]]; then
+    log_error "Authentication dialog was dismissed — backup not run."
+    notify-send -u critical -i dialog-error "Timeshift On Demand" \
+        "Backup cancelled — authentication was dismissed." 2>/dev/null
+elif [[ $ts_status -eq 127 ]]; then
+    log_error "Authentication failed or was denied (pkexec exit 127)."
+    notify-send -u critical -i dialog-error "Timeshift On Demand" \
+        "Backup not authorized — check the polkit policy is installed correctly." 2>/dev/null
+else
+    log_error "Backup finished with exit code $ts_status."
+    notify-send -u critical -i dialog-error "Timeshift On Demand — Backup FAILED" \
+        "Exit code $ts_status — check $LOGFILE" 2>/dev/null
+fi
+
+log_info "Prompt script finished"

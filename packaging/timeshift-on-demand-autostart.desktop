@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Timeshift On Demand — Backup Prompt
+Comment=Asks whether to run an on-demand Timeshift backup at login
+Exec=timeshift-on-demand-prompt
+Icon=timeshift
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

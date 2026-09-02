@@ -1,0 +1,37 @@
+Source: timeshift-on-demand
+Section: admin
+Priority: optional
+Maintainer: PLACEHOLDER Name <placeholder@example.invalid>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/PLACEHOLDER/timeshift-on-demand
+Rules-Requires-Root: no
+
+Package: timeshift-on-demand
+Architecture: all
+Depends: ${misc:Depends},
+         timeshift,
+         python3 (>= 3.8),
+         python3-gi,
+         gir1.2-gtk-3.0,
+         pkexec,
+         zenity,
+         libnotify-bin
+Recommends: gir1.2-ayatanaappindicator3-0.1 | gir1.2-appindicator3-0.1
+Description: on-demand backup companion for Timeshift
+ Timeshift On Demand is a small GTK3 companion app for Timeshift
+ (https://github.com/linuxmint/timeshift). It adds a manual on-demand
+ backup trigger with live in-app progress, an at-a-glance snapshot and
+ backup-drive status dashboard, and a cron-integrity watchdog for
+ Timeshift's own scheduling — launched from a tray icon or desktop
+ launcher. A login autostart entry and a resume-from-suspend hook can
+ also prompt (zenity, with a live monitor window on confirmation) to run
+ a backup, independent of whether the main window is open.
+ .
+ This package depends on the official timeshift package rather than
+ bundling or forking it, and does not touch snapshot browsing, restore,
+ or deletion — those remain Timeshift's own responsibility. Its three
+ privileged actions (creating a snapshot, disabling a reappeared legacy
+ cron file, and reading the snapshot list) are each authorized
+ individually via polkit/pkexec; the application itself never runs as
+ root.

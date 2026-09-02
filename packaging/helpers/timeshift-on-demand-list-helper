@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# timeshift-on-demand-list-helper — privileged worker invoked via pkexec.
+#
+# Confirmed (2026-08-29 testing, this machine): `timeshift --list` refuses
+# unconditionally without root — "Application needs admin access" — and
+# this is unconditional Timeshift behavior (only --version/--help work
+# unprivileged), not a config quirk of this machine. Real Timeshift's own
+# GUI works around this by re-execing its entire process as root
+# (timeshift-launcher -> pkexec timeshift-gtk); this project deliberately
+# doesn't follow that pattern (see PROJECT.md, "Privilege model") — so a
+# narrow, read-only, argument-free helper is the alternative: exactly one
+# command, no write/delete/restore capability whatsoever.
+#
+# Strictly read-only. Companion's Dashboard uses this only for a glance
+# (snapshot count/latest tag) — actually working with snapshots (browse,
+# restore, delete) is explicitly Timeshift's job via the "Open Timeshift"
+# button, never this helper. See PROJECT.md, "Snapshot management".
+#
+# Deliberately argument-free, same reasoning as the other two helpers.
+# This is the exact program path named in
+# org.timeshiftondemand.app.list's polkit exec.path annotation
+# (packaging/polkit/org.timeshiftondemand.app.policy):
+#
+#   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
+
+set -u
+
+/usr/bin/timeshift --list

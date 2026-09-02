@@ -1,0 +1,173 @@
+timeshift-on-demand (0.1.0~dev7) UNRELEASED; urgency=low
+
+  * Fixed a real false-negative on the login/resume auto-prompt and the
+    Backup tab: the drive-mount wait budget (6 attempts, 5s apart = 30s)
+    was too short for a USB enclosure recovering from an unclean
+    suspend-unmount. Confirmed via journalctl -k evidence on real
+    hardware across three separate resume events: this drive throws a
+    mid-suspend I/O error and aborted ext4 journal, then needs ext4
+    journal recovery on resume before it's mountable again -- observed
+    taking anywhere from 5s to 129s. Companion's wait was giving up
+    before recovery finished, most narrowly by just 4 seconds on one
+    occasion. Bumped the wait budget to 36 attempts (180s total) in both
+    the GTK app's backup_runner.py and the standalone
+    timeshift-on-demand-prompt script; documented the distinction
+    between this (self-recovering, just slow) and the previously known
+    dead-needs-replug USB failure in docs/troubleshooting.md.
+  * Documentation fixes from a fresh-eyes review of the new docs/ set:
+    corrected a copy-paste path mismatch in installation.md's install
+    command (was `./`, should be `../`, matching README.md); clarified
+    that `timeshift` itself is a declared .deb dependency, not a manual
+    prerequisite; introduced "Companion" as this app's short name on
+    first use in README.md instead of using it unexplained; noted in
+    usage.md that the Maintenance tab's "Fix Scheduling" button doesn't
+    visually change when it's correctly refusing to act as a no-op.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Wed, 02 Sep 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev6) UNRELEASED; urgency=low
+
+  * Fixed the GTK monitor window showing nothing during a real backup
+    then jumping straight to a completion notification. Two independent
+    buffering layers: timeshift's own stdout is fully block-buffered
+    (not line-buffered) when not attached to a terminal, and the backup
+    helper's own `output=$(...)` capture independently buffered
+    everything internally regardless. Fixed with `stdbuf -o0 -e0` on
+    the timeshift call plus a `tee`-based capture (also unbuffered)
+    instead of command substitution, so output reaches the log file --
+    and the monitor window watching it -- as it's produced. Verified
+    live: a real GTK screenshot mid-run shows genuine partial progress,
+    not a blank window.
+  * Documented that on-demand backups are not automatically pruned by
+    Timeshift's own retention settings (confirmed via real log
+    evidence, correcting an earlier wrong claim) -- added to the
+    Dashboard's advisory label and README.md's Known Limitations.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev5) UNRELEASED; urgency=low
+
+  * Fixed a second real bug in the resume-from-suspend hook, found via
+    real testing right after the dev4 fix: pkexec failed ("Error
+    creating textual authentication agent... exit 127") when confirming
+    the backup, because `systemd-run --uid=` (dev4's fix) runs the
+    prompt as a plain root-owned system service that isn't actually a
+    member of the user's logind session -- pkexec couldn't find the
+    graphical polkit agent to use. Switched to launching through the
+    user's own `systemd --user` manager instead (`systemd-run --user
+    --machine="$user@.host"`), which keeps the process genuinely inside
+    the user's session-adjacent unit tree without reintroducing the
+    original PAM-session-kill problem.
+  * Verified end-to-end for real: pkexec authorized correctly, a genuine
+    `timeshift --create` ran to completion (RSYNC snapshot saved,
+    tagged, "Backup completed successfully"), no stray processes left
+    behind. The full resume-hook -> confirm -> authorize -> backup ->
+    completion pipeline is now confirmed working, not just each piece
+    individually.
+  * Replaced the terminal-based live monitor (gnome-terminal/xterm
+    spawning a bash script) with a small standalone GTK window
+    (timeshift-on-demand-gui-monitor). Genuine simplification, not just
+    cosmetic: drops the gnome-terminal/xterm dependency entirely.
+    Verified locally: streams log lines live, auto-closes on success
+    with the doneflag cleaned up, stays open indefinitely on failure.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev4) UNRELEASED; urgency=low
+
+  * Fixed 2 real bugs in the resume-from-suspend hook, found via actual
+    suspend/resume testing on the Samsung RF511:
+    - The hook launched the prompt via `runuser -u <user>`, which
+      creates a brand-new PAM login session -- systemd-logind killed it
+      almost immediately, before the prompt script could even start.
+      Switched to `systemd-run --uid=... --collect --`, a plain
+      transient service rather than a login session, so logind has
+      nothing to tear down.
+    - The hook was launching the prompt once per "active" loginctl
+      session, including SSH connections (Type=tty) alongside the real
+      desktop session (Type=wayland/x11) -- a tty session can never show
+      a GUI dialog, so this was pure waste and a real risk of two
+      parallel backup attempts. Now filtered to wayland/x11 sessions
+      only.
+  * Both fixes verified end-to-end: a manual re-test with the backup
+    drive connected reached the zenity confirmation dialog, which was
+    visually confirmed on-screen.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev3) UNRELEASED; urgency=low
+
+  * Fixed 6 real bugs found via actual install-and-test on a second
+    machine (Samsung RF511), each verified with a targeted test:
+    - backup-helper's exit-134 tolerance could report false success on a
+      genuine write failure (confirmed: a USB disconnect mid-write
+      aborted the drive's filesystem journal, and the old recency-only
+      check still called it a success). Now scans captured output for
+      known failure phrases first.
+    - status.get_snapshots()'s pkexec call used a 15s timeout inherited
+      from a helper meant for fast unprivileged queries -- too short for
+      human password entry, confirmed killing real authentication
+      attempts. Now 120s.
+    - cronfix-helper's `systemctl reload cron` fails on hardware whose
+      cron package has no ExecReload= -- switched to `restart`.
+    - Companion's configured drive and Timeshift's own backup_device_uuid
+      are independent settings; a mismatch or unconfigured Timeshift now
+      fails fast (before the drive-wait and before spending a pkexec
+      prompt) with a clear message instead of Timeshift's own opaque
+      "Device not found" error.
+    - The cron-integrity Maintenance feature assumed the legacy cron file
+      reappearing was always an anomaly; confirmed on two machines it's
+      actually Timeshift's own default behavior whenever any schedule
+      level is enabled. Now checks Timeshift's own schedule_* flags
+      first and refuses to spend a pkexec prompt on a fix that would
+      just get undone.
+    - A failed/skipped backup no longer triggers a second privileged
+      (pkexec) dashboard refresh -- only a real success does.
+  * Added top-level LICENSE (GPL-3.0, fetched verbatim from gnu.org) --
+    confirmed relevant via GNOME Software flagging the installed package
+    "Unknown Licence" in its own app-details page.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sun, 30 Aug 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev2) UNRELEASED; urgency=low
+
+  * src/ reworked: all privileged calls go through pkexec against the
+    bundled helpers (backup, cron-fix, and a new read-only snapshot-list
+    helper — timeshift --list needs root unconditionally on every
+    install, confirmed by testing every flag timeshift --help describes
+    as a query). New config.py for per-user XDG settings; new Settings
+    tab for drive selection (no more hardcoded UUID); dead systemd-unit
+    status reporting dropped from status.py.
+  * Added the login-autostart and resume-from-suspend auto-prompt path
+    (timeshift-on-demand-prompt + timeshift-on-demand-monitor, zenity
+    confirm + live monitor window), independent of the GTK app.
+  * Fixed a real, launch-blocking bug found via an actual screenshot
+    during testing: app.py never called show_all(), so every tab's
+    content was silently invisible despite the window itself mapping
+    correctly with no errors.
+  * Dashboard's snapshot glance now carries a permanent advisory that
+    it is read-only and "Open Timeshift" is the only way to actually
+    work with snapshot data; the privileged list call is restricted to
+    explicit user actions (open, manual Refresh, post-backup) and
+    deliberately excluded from the 30s auto-refresh timer, to avoid
+    repeated authentication prompts just for having the window open.
+  * Functionally tested end-to-end (mocked pkexec/zenity/notify-send,
+    sandboxed XDG dirs) and live in the running GUI app
+    (screenshot + xdotool-driven clicks) — see PROJECT.md for the full
+    verification log. Not yet attempted: dpkg-buildpackage/lintian, and
+    a real suspend/resume test of the resume-hook.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sat, 29 Aug 2026 00:00:00 +0000
+
+timeshift-on-demand (0.1.0~dev1) UNRELEASED; urgency=low
+
+  * Initial packaging skeleton: polkit actions for the backup and
+    cron-fix helpers (org.timeshiftondemand.app.{backup,cronfix}),
+    both bundled privileged helper scripts, the desktop launcher, the
+    /usr/bin thin launcher, and this debian/ metadata.
+  * Application code (src/) is still the first-pass draft — sudo calls,
+    hardcoded drive UUID, and hardcoded log/config paths have not yet
+    been reworked to call these helpers via pkexec or to use per-user
+    XDG config. Not build-clean yet; see PROJECT.md status checklist.
+
+ -- PLACEHOLDER Name <placeholder@example.invalid>  Sat, 29 Aug 2026 00:00:00 +0000

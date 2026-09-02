@@ -1,0 +1,87 @@
+#!/bin/bash
+#
+# timeshift-on-demand-backup-helper — privileged worker invoked via pkexec.
+#
+# Runs a single Timeshift on-demand snapshot creation, then tolerates a
+# known upstream bug (see desktop-troubleshooting/Timeshift/timeshift-crash-session.md):
+# Timeshift's rsync progress parser can crash with GLib-GObject-CRITICAL /
+# "double free or corruption (!prev)" (exit 134) AFTER the snapshot itself
+# has already completed successfully. Rather than trust the raw exit code
+# in that specific case, verify via `timeshift --list` before deciding
+# pass/fail. Ported in spirit from the reviewed, deployed
+# projects/timeshift-monitor-backup/timeshift-backup-root.sh.
+#
+# HARDENED 2026-08-30 after a real false-positive caught on the Samsung
+# RF511: a USB bus reset disconnected the backup drive mid-write, aborting
+# the ext4 journal ("Journal has aborted", repeated "potential data loss!").
+# timeshift --create exited 134, and a snapshot directory from that same
+# run happened to fall within the old 5-minute recency window — so the
+# original version of this check reported success for a backup that had
+# genuinely failed (confirmed after the fact: a fresh `timeshift --list`
+# showed "No snapshots on this device"). A recent-looking timestamp alone
+# is not sufficient evidence the snapshot is actually valid. Now also
+# scans the actual captured output for known failure phrases and refuses
+# to tolerate exit 134 if any appear, regardless of what the recency
+# check says.
+#
+# Deliberately argument-free. This is the exact program path named in
+# org.timeshiftondemand.app.backup's polkit exec.path annotation
+# (packaging/polkit/org.timeshiftondemand.app.policy) — invoked as:
+#
+#   pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
+#
+# with no arguments, from the unprivileged app. Nothing here is
+# attacker-influenced by whatever called pkexec. If ionice/nice priority
+# adjustment is wanted, the unprivileged caller applies it around the
+# pkexec call itself (e.g. `ionice -c2 -n7 nice -n10 pkexec ...`) — both
+# are inherited by the exec'd root child, so this script does not need
+# to set its own priority.
+#
+# Not meant to be run interactively. The caller (Companion's
+# backup_runner.py, once reworked to call this — see PROJECT.md) captures
+# stdout/stderr and the final exit code.
+
+set -u
+
+# `timeshift`'s own progress output is fully buffered (not line-buffered)
+# when its stdout isn't a terminal, confirmed 2026-08-30 (Samsung RF511):
+# the live monitor window showed nothing for the entire run, then over a
+# thousand progress fragments appeared all at once right as the process
+# exited — because on a plain `output=$(...)` capture, nothing reaches
+# this script's own stdout (and so the caller's log file, which the
+# monitor windows tail) until the whole command substitution finishes
+# either way, on top of timeshift's own buffering.
+#
+# Fixed with two changes together — one alone isn't enough:
+#   1. `stdbuf -o0 -e0` forces timeshift's own stdout/stderr to flush
+#      immediately instead of accumulating in its internal buffer.
+#   2. Streaming through `tee` (itself also forced unbuffered) instead
+#      of `output=$(...)` — this is what actually gets bytes onto this
+#      script's own stdout as they're produced, rather than only after
+#      the whole command finishes. `tee` also captures a copy to a temp
+#      file so the failure-phrase scan below still has the full output
+#      to check, same as before.
+TMP_OUTPUT=$(mktemp)
+trap 'rm -f "$TMP_OUTPUT"' EXIT
+
+stdbuf -o0 -e0 /usr/bin/timeshift --create --tags D --scripted 2>&1 \
+    | stdbuf -o0 tee "$TMP_OUTPUT"
+ts_status=${PIPESTATUS[0]}
+output=$(cat "$TMP_OUTPUT")
+
+if [[ "$ts_status" -eq 134 ]]; then
+    if grep -qE 'Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss' <<< "$output"; then
+        echo "Exit 134 but output shows a real failure (see above) - not treating as success."
+        exit "$ts_status"
+    fi
+
+    latest=$(/usr/bin/timeshift --list 2>/dev/null \
+        | grep -oP '\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}' | tail -1)
+    now_minus_5=$(date -d '5 minutes ago' +%Y-%m-%d_%H-%M)
+    if [[ -n "$latest" && "$latest" > "$now_minus_5" ]]; then
+        echo "Exit 134 but snapshot $latest completed - treating as success."
+        exit 0
+    fi
+fi
+
+exit "$ts_status"

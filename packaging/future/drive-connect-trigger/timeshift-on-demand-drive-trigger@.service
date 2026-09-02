@@ -1,0 +1,20 @@
+# timeshift-on-demand-drive-trigger@.service — DRAFTED, NOT ACTIVE.
+#
+# See ../README.md before doing anything with this directory. Not
+# referenced by debian/install — building the package does not ship
+# this file.
+#
+# Templated system unit — %i is the connecting device's own filesystem
+# UUID, supplied by 99-timeshift-on-demand-drive.rules via
+# %E{ID_FS_UUID}. Runs as root (a plain udev-triggered system service,
+# same trust level as timeshift-on-demand-resume-hook already has) —
+# all it does is hand off to the check script, which does the actual
+# "is this UUID one some active user configured" comparison and, only on
+# a match, launches that user's prompt.
+
+[Unit]
+Description=Timeshift On Demand drive-connect check (UUID %i)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/timeshift-on-demand/timeshift-on-demand-drive-trigger-check %i

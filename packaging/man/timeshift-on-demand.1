@@ -1,0 +1,28 @@
+.TH TIMESHIFT-ON-DEMAND 1 "August 2026" "timeshift-on-demand" "User Commands"
+.SH NAME
+timeshift-on-demand \- on-demand backup companion for Timeshift
+.SH SYNOPSIS
+.B timeshift-on-demand
+.SH DESCRIPTION
+Launches the Timeshift On Demand GTK3 companion app: Dashboard, Backup,
+Settings, and Maintenance tabs built on top of the official
+.BR timeshift (8)
+package. Triggers on-demand backups with live in-app progress, shows a
+read-only snapshot/status glance, and offers a cron-integrity watchdog
+for Timeshift's own scheduling.
+.PP
+Snapshot browsing, restore, and deletion remain Timeshift's own
+responsibility \(em use the "Open Timeshift" button in the app, or run
+.B timeshift-launcher
+directly.
+.SH FILES
+.TP
+.I ~/.config/timeshift-on-demand/config.json
+Per-user settings (currently just the configured backup drive UUID).
+.TP
+.I ~/.local/share/timeshift-on-demand/backup.log
+Backup run history, shared with
+.BR timeshift-on-demand-prompt (1).
+.SH SEE ALSO
+.BR timeshift (8),
+.BR timeshift-on-demand-prompt (1)
