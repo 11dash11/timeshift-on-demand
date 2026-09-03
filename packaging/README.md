@@ -123,6 +123,10 @@ Not part of this pass — tracked in `PROJECT.md`'s status checklist:
   (`/usr/lib/timeshift-on-demand/`) deliberately stayed a plain
   product-name path, as planned — only the polkit *action id* needed to
   match the namespace, not the filesystem path.
-- A real `debian/timeshift-on-demand.1` or install-time smoke test
+- ~~A real `debian/timeshift-on-demand.1` or install-time smoke test
   hasn't been attempted yet — this skeleton has not been run through
-  `dpkg-buildpackage`/`lintian`.
+  `dpkg-buildpackage`/`lintian`.~~ — done. Manpages exist
+  (`packaging/man/timeshift-on-demand.1`,
+  `timeshift-on-demand-prompt.1`), and the package has built and passed
+  `lintian` clean multiple times since (dev2, dev9 re-verified
+  2026-09-03) — see `PROJECT.md`'s Status section.
