@@ -86,7 +86,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         advisory = Gtk.Label(
             label=(
                 "This is a read-only glance. Companion cannot browse, restore, "
-                "or delete snapshots — use “Open Timeshift” below for that; "
+                "or delete snapshots — use the “Open Timeshift” button above; "
                 "it's the only way to work with your snapshot data.\n"
                 "Note: on-demand backups aren't automatically pruned by "
                 "Timeshift's own retention settings — they can accumulate "

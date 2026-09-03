@@ -1,3 +1,14 @@
+timeshift-on-demand (0.1.0~dev9) UNRELEASED; urgency=low
+
+  * Fixed a wording bug in the Dashboard's read-only advisory label
+    (app.py): it told the user to use "Open Timeshift" "below", but
+    that button sits in the row above the label, not below it. Caught
+    by JShin from a real screenshot of the running dev8 app on the
+    Samsung RF511, not just read in source. Text-only change, no
+    functional/layout change.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 03 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev8) UNRELEASED; urgency=low
 
   * Resolved the placeholder reverse-DNS namespace: org.timeshiftondemand.app
