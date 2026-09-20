@@ -69,8 +69,10 @@ stdbuf -o0 -e0 /usr/bin/timeshift --create --tags D --scripted 2>&1 \
 ts_status=${PIPESTATUS[0]}
 output=$(cat "$TMP_OUTPUT")
 
+failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss'
+
 if [[ "$ts_status" -eq 134 ]]; then
-    if grep -qE 'Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss' <<< "$output"; then
+    if grep -qE "$failure_re" <<< "$output"; then
         echo "Exit 134 but output shows a real failure (see above) - not treating as success."
         exit "$ts_status"
     fi
@@ -80,6 +82,24 @@ if [[ "$ts_status" -eq 134 ]]; then
     now_minus_5=$(date -d '5 minutes ago' +%Y-%m-%d_%H-%M)
     if [[ -n "$latest" && "$latest" > "$now_minus_5" ]]; then
         echo "Exit 134 but snapshot $latest completed - treating as success."
+        exit 0
+    fi
+fi
+
+# Same upstream bug, seen as SIGSEGV (139) instead of SIGABRT (134) —
+# confirmed 2026-09-20 on the Dell: the crash hit while Timeshift was
+# deleting the oldest snapshot after "Maximum backups exceeded", i.e.
+# AFTER the new snapshot was already saved. A segfault gives no other
+# hint that it was benign, so unlike 134 this only counts as success when
+# the captured output itself says the snapshot was saved and shows no
+# write-failure phrases.
+if [[ "$ts_status" -eq 139 ]]; then
+    if grep -qE "$failure_re" <<< "$output"; then
+        echo "Exit 139 but output shows a real failure (see above) - not treating as success."
+        exit "$ts_status"
+    fi
+    if grep -q 'Snapshot saved successfully' <<< "$output"; then
+        echo "Exit 139 (segfault) after the snapshot was already saved - treating as success."
         exit 0
     fi
 fi

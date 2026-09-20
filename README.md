@@ -11,7 +11,7 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev8`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev10`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
@@ -98,7 +98,7 @@ that's completely fine as well.
   backup-drive usage, and an "Open Timeshift" button for anything beyond
   that glance (browsing, restoring, deleting snapshots).
 - **Backup** — a "Backup Now" button with a live streamed log of the
-  run, same exit-134-crash tolerance Timeshift's own CLI needs (see
+  run, same exit-134/139-crash tolerance Timeshift's own CLI needs (see
   [Privilege model](#privilege-model)).
 - **Settings** — pick which drive Companion should wait for before
   attempting a backup. This is independent of Timeshift's own configured

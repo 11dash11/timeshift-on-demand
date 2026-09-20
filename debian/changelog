@@ -1,3 +1,22 @@
+timeshift-on-demand (0.1.0~dev10) UNRELEASED; urgency=low
+
+  * backup-helper now tolerates Timeshift's known GObject crash when it
+    surfaces as a segfault (exit 139), not just an abort (exit 134).
+    Found on the Dell's legacy script on 2026-09-20: a real on-demand
+    backup saved its snapshot ("RSYNC Snapshot saved successfully"),
+    then Timeshift segfaulted while deleting the oldest snapshot after
+    "Maximum backups exceeded", and the 134-only check reported a false
+    failure. Companion had the identical gap. The 139 branch is
+    deliberately stricter than the 134 one: it only counts as success
+    when the captured output contains "Snapshot saved successfully" and
+    none of the known write-failure phrases (now a shared pattern used by
+    both branches). The 134 path is unchanged. Verified against a fake
+    timeshift covering exit 0/1/134/139 variants; not yet exercised
+    against a real 139 on the Samsung.
+  * README status line said dev8; corrected.
+
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 20 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev9) UNRELEASED; urgency=low
 
   * Fixed a wording bug in the Dashboard's read-only advisory label
