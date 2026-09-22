@@ -1,3 +1,26 @@
+timeshift-on-demand (0.1.0~dev11) UNRELEASED; urgency=low
+
+  * Hardened the resume-from-suspend hook against a real silent-outage
+    bug found on the Samsung RF511: a resume on 2026-09-19 left a
+    root-owned dbus-launch/dbus-daemon pair (almost certainly spawned
+    by timeshift itself under pkexec, falling back to autolaunch
+    because pkexec strips DBUS_SESSION_BUS_ADDRESS) stuck inside the
+    transient systemd --user unit's cgroup. The unprivileged --user
+    manager cannot kill root-owned processes, so the unit's cgroup
+    never emptied, the unit was never garbage-collected, and every
+    resume since silently failed to even launch the prompt (colliding
+    with the same stuck unit name) -- no dialog, no notification, no
+    error visible anywhere except the hook's own log file. Fixed by
+    giving each resume's transient unit a unique name (session id +
+    epoch timestamp) so a future leaked unit can never again block
+    subsequent resumes -- it becomes one harmless orphaned process
+    pair instead of a silent total outage. The underlying dbus-launch
+    leak itself is not yet fixed at the source (pkexec's environment
+    sanitizing makes it hard to influence from the hook; would need
+    live reproduction to pin down further).
+
+ -- JShin <11dash11@users.noreply.github.com>  Tue, 22 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev10) UNRELEASED; urgency=low
 
   * backup-helper now tolerates Timeshift's known GObject crash when it

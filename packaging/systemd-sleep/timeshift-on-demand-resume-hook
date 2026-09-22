@@ -56,6 +56,31 @@
 # part of the fragility is unchanged. Re-verify with another real
 # suspend/resume cycle, including actually confirming the dialog and
 # watching the backup itself run, before fully trusting this.
+#
+# 4. FOUND 2026-09-22, via real journalctl/systemctl evidence on the
+#    Samsung after Companion silently stopped prompting on resume for
+#    several days straight: a resume on 2026-09-19 left a root-owned
+#    `dbus-launch`/`dbus-daemon` pair (almost certainly spawned by
+#    `timeshift` itself, running as root under the backup helper's
+#    `pkexec` call, falling back to X11's `dbus-launch --autolaunch`
+#    because pkexec strips DBUS_SESSION_BUS_ADDRESS from the escalated
+#    environment by design) running *inside this unit's cgroup* after
+#    the unit's own main process had already exited successfully. This
+#    --user manager runs as the unprivileged user, so it has no
+#    permission to kill those root-owned stragglers ("Failed to kill
+#    control group ... Operation not permitted" in the journal) — the
+#    unit's cgroup therefore never goes empty, `--collect` never
+#    garbage-collects it, and every later resume's attempt to reuse the
+#    *same* unit name for that session fails outright ("already loaded
+#    or has a fragment file"), silently, before the prompt even starts.
+#    Not yet fixed at the source (that would mean understanding/
+#    controlling whatever inside the pkexec'd root context is spawning
+#    dbus-launch, which pkexec's own environment sanitizing makes hard
+#    to influence from here) — but hardened against so a single leaked
+#    unit can never again wedge *every future resume for that session*:
+#    each invocation now gets a unique unit name, so a stuck leftover
+#    from one resume is simply orphaned (a minor, self-contained leak)
+#    instead of silently blocking the next one indefinitely.
 
 set -u
 
@@ -106,8 +131,13 @@ for session_id in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print
     # specific combination is what makes pkexec able to find the right
     # graphical polkit agent. --collect: clean up this transient unit
     # automatically once it exits.
+    #
+    # The unit name includes the current epoch seconds (see header
+    # comment, item 4) so a unit stuck leftover from a past resume can
+    # never collide with and block a new one — each resume always gets
+    # a fresh, never-before-used name.
     systemd-run --user --machine="$user@.host" --collect \
-        --unit="timeshift-on-demand-resume-$session_id" \
+        --unit="timeshift-on-demand-resume-$session_id-$(date +%s)" \
         "${env_args[@]}" \
         -- timeshift-on-demand-prompt \
         >>/var/log/timeshift-on-demand-resume-hook.log 2>&1
