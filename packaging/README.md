@@ -42,32 +42,16 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
   legacy-cron-file rename + cron reload — no timer re-enable step, ever
   (see `PROJECT.md`, "Maintenance tab — Fix Scheduling").
 
-## Snapshot-list action
+## Snapshot list (no privileged action)
 
-```
-pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
-```
-
-- No arguments. Resolves to `io.github.11dash11.timeshiftondemand.list`.
-- Confirmed (2026-08-29 testing): `timeshift --list` refuses
-  unconditionally without root on every install, not just this machine —
-  only `--version`/`--help` work unprivileged. This helper is the
-  narrow, read-only alternative to Timeshift's own answer to that
-  (re-exec the whole GUI as root), consistent with this project's choice
-  not to follow that pattern.
-- Uses `auth_admin_keep` in the polkit action (the other two use plain
-  `auth_admin`) — this is a read-only glance `status.get_snapshots()`
-  may be called from more than once in quick succession (Refresh click,
-  once after a backup), and re-prompting every single time would be the
-  nagging this project has avoided elsewhere. Never applied to the
-  backup or cron-fix actions, which are consequential writes.
-- **Strictly informational.** `src/app.py`'s Dashboard carries a visible
-  advisory: this glance cannot browse, restore, or delete snapshots —
-  "Open Timeshift" is the only way to do any of that. Do not extend this
-  helper's scope beyond `--list` without revisiting that framing.
-- **Never call this from a silent/automatic refresh.** `app.py`'s 30s
-  Dashboard auto-tick deliberately calls only the unprivileged drive/disk
-  status, not this — every call here is a real authorization request.
+There used to be a third action, `io.github.11dash11.timeshiftondemand.list`,
+running `timeshift --list` via a list helper. It was removed in
+`0.1.0~dev14`: it prompted for a password every time the window opened,
+and wasn't actually read-only (every Timeshift run rewrites its
+`/etc/cron.d` files and may mount the backup device). `status.get_snapshots()`
+now reads `<mount>/timeshift/snapshots/*/info.json` on Timeshift's
+mounted backup drive directly — Timeshift makes those world-readable —
+with no privilege at all.
 
 ## Auto-prompt paths (login + resume-from-suspend)
 

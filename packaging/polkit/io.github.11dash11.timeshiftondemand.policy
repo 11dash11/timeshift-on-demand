@@ -19,7 +19,8 @@
   to autolaunch the root dbus-launch/dbus-daemon pair behind the
   2026-09-19 resume-hook wedge (see the resume hook's header, item 4):
   X11 autolaunch refuses outright without DISPLAY instead of spawning
-  anything. Not yet confirmed on hardware.
+  anything. Confirmed on the Samsung RF511 (2026-09-24): a resume plus
+  backup cycle left no orphaned processes.
 -->
 <policyconfig>
   <vendor>Timeshift On Demand</vendor>
@@ -49,25 +50,8 @@
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper</annotate>
   </action>
 
-  <action id="io.github.11dash11.timeshiftondemand.list">
-    <message gettext-domain="timeshift-on-demand">Authentication is required to read the Timeshift snapshot list</message>
-    <description>Run the Timeshift On Demand snapshot-list helper as Administrator</description>
-    <icon_name>timeshift</icon_name>
-    <defaults>
-      <!-- auth_admin_keep, not auth_admin: this action is a read-only
-           glance the Dashboard may call from more than one place in
-           quick succession (window open, a manual Refresh click, once
-           after a backup completes) — auth_admin would re-prompt every
-           single time, which is exactly the nagging this project has
-           tried to avoid elsewhere. _keep lets polkit cache a successful
-           authentication for its own short default window instead of
-           demanding it again immediately. Deliberately NOT applied to
-           the backup or cronfix actions above — those are consequential
-           writes, where "ask every time" is the safer default. -->
-      <allow_any>auth_admin_keep</allow_any>
-      <allow_inactive>auth_admin_keep</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper</annotate>
-  </action>
+  <!-- There used to be a third action, .list (auth_admin_keep), running
+       Timeshift's list command for the Dashboard. Removed in 0.1.0~dev14: the
+       Dashboard now reads Timeshift's world-readable snapshot folders
+       directly (src/status.py, get_snapshots()), with no privilege. -->
 </policyconfig>

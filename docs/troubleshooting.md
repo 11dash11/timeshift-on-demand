@@ -40,23 +40,22 @@ backup (manually or via an auto-prompt) and nothing visible happened:
    the drive was on its way back on its own — just give it the full
    wait rather than replugging or assuming something's broken.
 
-## Dashboard shows "Snapshots: unavailable — Application needs admin access"
+## Dashboard shows "Snapshots: unavailable — …"
 
-This is Timeshift's own behavior, not a Companion bug: `timeshift --list`
-refuses unconditionally without root, confirmed by testing every
-read-looking flag Timeshift offers — only `--version`/`--help` work
-unprivileged. Companion routes this through a narrow `pkexec` action
-specifically to work around it. If you see this message, it usually
-means:
+The Dashboard reads snapshots straight from Timeshift's own backup drive
+(the one set in Timeshift → Settings → Location, which isn't necessarily
+the drive picked in Companion's Settings tab). The message after the
+dash says why it couldn't:
 
-- The authentication dialog was dismissed (click Refresh and try again),
-  or
-- The dialog is still open somewhere, waiting for you (they can be slow
-  to appear the first time).
-
-If it says "timed out waiting 120s for authentication," that's a
-genuinely long wait — check nothing's blocking the dialog from
-appearing, then click Refresh again.
+- **"Timeshift's backup drive isn't mounted"** — plug it in (or open it
+  in your file manager so the desktop mounts it), then click Refresh.
+  Companion doesn't mount drives itself.
+- **"Timeshift has no backup device configured yet"** / **"isn't
+  configured yet"** — run Timeshift's own first-run setup; see
+  [installation.md](installation.md#before-you-install-set-up-timeshift-itself-first).
+- **"Timeshift is in BTRFS mode"** — BTRFS snapshots don't live on a
+  separate backup drive, so the Dashboard can't count them; use
+  **Open Timeshift** instead.
 
 ## "Timeshift is configured to back up to a different device"
 
@@ -77,17 +76,6 @@ expected versus what Timeshift is configured for.
 **Fix:** open Timeshift itself and either repoint its backup device to
 match, or update Companion's Settings tab to match Timeshift's — either
 direction works, they just both need to agree.
-
-## Multiple password prompts for one backup
-
-This is expected, not a bug — see
-[usage.md's privilege prompts section](usage.md#understanding-privilege-prompts).
-Companion deliberately asks for authentication separately for each
-privileged action rather than using a standing passwordless grant. A
-single "Backup Now" click legitimately triggers one prompt for the
-backup itself; if the Dashboard *also* refreshes right after (which only
-happens on a successful backup, not a failed one), that's a second,
-separate prompt for reading the updated snapshot list.
 
 ## Maintenance tab's "Fix Scheduling" button does nothing / says "not applied"
 

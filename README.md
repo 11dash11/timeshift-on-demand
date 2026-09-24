@@ -11,7 +11,7 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev13`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev14`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
@@ -53,7 +53,7 @@ Two smaller reasons on top of that:
 
 - **A narrower privilege model.** Timeshift's own GUI re-execs its
   entire process as root via `pkexec` at launch. Companion's own
-  process never runs as root — it asks for three separate, narrowly
+  process never runs as root — it asks for two separate, narrowly
   scoped, single-purpose privileged actions instead (see
   [Privilege model](#privilege-model) below), each authorized on its
   own.
@@ -150,15 +150,18 @@ screenshots.
 
 Companion itself never runs as root — unlike Timeshift's own GUI, which
 re-execs its entire process as root via `pkexec` at launch. Instead,
-exactly three narrow, argument-free actions are individually authorized
+exactly two narrow, argument-free actions are individually authorized
 via `polkit`, each resolving to one bundled helper script that does
 exactly one thing:
 
 | Action | Does |
 |---|---|
-| `io.github.11dash11.timeshiftondemand.backup` | Runs `timeshift --create`, with the crash-tolerance workaround for a known upstream progress-parser bug |
+| `io.github.11dash11.timeshiftondemand.backup` | Runs `timeshift --create`, with the crash-tolerance workaround for a known upstream progress-parser bug. Like any Timeshift run, this can also delete old snapshots under Timeshift's own retention settings. |
 | `io.github.11dash11.timeshiftondemand.cronfix` | Disables a reappeared legacy cron file (only when Timeshift's own scheduling is actually off) |
-| `io.github.11dash11.timeshiftondemand.list` | Runs `timeshift --list` — Timeshift requires root for this unconditionally, even for a read-only listing |
+
+The Dashboard's snapshot count needs no privilege at all: it reads
+Timeshift's snapshot folders on the mounted backup drive directly, which
+Timeshift leaves world-readable.
 
 ## What this project deliberately doesn't do
 
