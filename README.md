@@ -11,7 +11,7 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev15`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev16`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
