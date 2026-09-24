@@ -1,3 +1,23 @@
+timeshift-on-demand (0.1.0~dev13) UNRELEASED; urgency=low
+
+  * backup-helper: exit 134 (Timeshift's GObject abort) now counts as
+    success only when this run's own output says "Snapshot saved
+    successfully" and shows none of the known write-failure phrases, the
+    same rule exit 139 already used. The old fallback accepted any
+    snapshot on the device dated within the last 5 minutes, which wasn't
+    tied to this run: an abort mid-rsync prints no failure phrase, so a
+    previous run's recent snapshot could make a failed backup look
+    successful, while a run longer than 5 minutes that crashed during
+    cleanup, after saving, was reported as a failure. `timeshift --list`
+    is no longer called on this path.
+  * tests: the suite now covers both of those cases (a recent snapshot
+    from an earlier run with no saved line: failure; a long run that
+    saved before crashing: success), and the fake timeshift gained a
+    matching scenario. 10/10 pass. Not yet exercised against a real
+    exit 134, which only happens when Timeshift actually crashes.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 24 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev12) UNRELEASED; urgency=low
 
   * Backup tab: the privileged helper's output now streams into the log
