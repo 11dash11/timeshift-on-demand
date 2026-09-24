@@ -356,9 +356,14 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
 
 class TimeshiftCompanionApp(Gtk.Application):
     def __init__(self):
-        # Placeholder namespace pending a real reverse-DNS ID once
-        # published — see PROJECT.md, "Naming".
-        super().__init__(application_id="io.github.11dash11.timeshiftondemand")
+        # "_11dash11", not "11dash11": no element of a GApplication ID may
+        # start with a digit, and GLib silently dropped the invalid ID,
+        # which disabled single-instance behavior (a second launch opened
+        # a second window and tray icon). Leading "_" is the standard
+        # freedesktop escape for this. Must match the .desktop file name.
+        # (The polkit action IDs, io.github.11dash11.timeshiftondemand.*,
+        # follow polkit's own rules and are unaffected.)
+        super().__init__(application_id="io.github._11dash11.timeshiftondemand")
         self.window: TimeshiftCompanionWindow | None = None
 
     def do_activate(self) -> None:

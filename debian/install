@@ -20,7 +20,7 @@ packaging/bin/timeshift-on-demand-gui-monitor usr/lib/timeshift-on-demand/
 
 packaging/polkit/io.github.11dash11.timeshiftondemand.policy usr/share/polkit-1/actions/
 
-packaging/timeshift-on-demand.desktop usr/share/applications/
+packaging/io.github._11dash11.timeshiftondemand.desktop usr/share/applications/
 packaging/timeshift-on-demand-autostart.desktop etc/xdg/autostart/
 
 packaging/systemd-sleep/timeshift-on-demand-resume-hook usr/lib/systemd/system-sleep/
