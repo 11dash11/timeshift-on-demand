@@ -72,9 +72,11 @@ EOF
 }
 
 saved_ok() {
-    echo "Created control file: /run/timeshift/12345/backup/timeshift/snapshots/$(stamp now)/info.json"
+    # $1 = snapshot name (its start time); defaults to now
+    local name=${1:-$(stamp now)}
+    echo "Created control file: /run/timeshift/12345/backup/timeshift/snapshots/$name/info.json"
     echo "RSYNC Snapshot saved successfully (41s)"
-    echo "Tagged snapshot '$(stamp now)': ondemand"
+    echo "Tagged snapshot '$name': ondemand"
     echo "------------------------------------------------------------------------------"
 }
 
@@ -101,8 +103,18 @@ do_create() {
             echo "E: Failed to create new snapshot"
             gobject_abort
             exit 134 ;;
-        abort-recent|abort-old|abort-none)
+        abort-recent|abort-none)
             create_preamble; saved_ok; gobject_abort
+            exit 134 ;;
+        abort-old)
+            # a long run: the snapshot is named for its start time, 10
+            # minutes ago, and was saved before the crash during cleanup
+            create_preamble; saved_ok "$(stamp '10 minutes ago')"; gobject_abort
+            exit 134 ;;
+        abort-recent-not-saved)
+            # aborted mid-rsync: no saved line, no failure phrase — while
+            # --list would show a 1-minute-old snapshot from an earlier run
+            create_preamble; gobject_abort
             exit 134 ;;
         segv-saved)
             create_preamble; saved_ok
@@ -128,7 +140,7 @@ do_create() {
 
 do_list() {
     case "$FAKE_TIMESHIFT_SCENARIO" in
-        abort-recent|abort-with-failure-phrase|success|segv-saved|segv-saved-and-failure-phrase)
+        abort-recent|abort-recent-not-saved|abort-with-failure-phrase|success|segv-saved|segv-saved-and-failure-phrase)
             recent_list ;;
         abort-old)
             old_list ;;

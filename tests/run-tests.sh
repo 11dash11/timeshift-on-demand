@@ -26,7 +26,7 @@ TESTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_DIR=$(dirname "$TESTS_DIR")
 HELPER="$REPO_DIR/packaging/helpers/timeshift-on-demand-backup-helper"
 FAKE_DIR="$TESTS_DIR/fake-timeshift"
-EXPECTED_TIMESHIFT_CALLS=2
+EXPECTED_TIMESHIFT_CALLS=1
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -117,15 +117,24 @@ run_case "3  exit 134 + failure phrase, recent snapshot exists -> stays 134" \
     abort-with-failure-phrase 134 no \
     "Exit 134 but output shows a real failure"
 
-run_case "4  exit 134, no failure phrase, snapshot 1 min old -> tolerated, 0" \
-    abort-recent 0 yes \
-    "Exit 134 but snapshot"
+# Exit 134 follows the same rule as 139: success only when this run's
+# output says "Snapshot saved successfully" and has no failure phrase.
+# `timeshift --list` is never consulted, so snapshot age doesn't matter.
 
-run_case "5a exit 134, no failure phrase, newest snapshot 10 min old -> stays 134" \
-    abort-old 134 yes
+run_case "4  exit 134, 'Snapshot saved successfully', no failure phrase -> tolerated, 0" \
+    abort-recent 0 no \
+    "Exit 134 (abort) after the snapshot was already saved"
 
-run_case "5b exit 134, no failure phrase, no snapshots at all -> stays 134" \
-    abort-none 134 yes
+run_case "4b exit 134, no saved line, a previous run's snapshot is 1 min old -> stays 134" \
+    abort-recent-not-saved 134 no
+
+run_case "5a exit 134, saved line, long run (snapshot 10 min old) -> tolerated, 0" \
+    abort-old 0 no \
+    "Exit 134 (abort) after the snapshot was already saved"
+
+run_case "5b exit 134, saved line, --list would show no snapshots -> tolerated, 0 (--list not used)" \
+    abort-none 0 no \
+    "Exit 134 (abort) after the snapshot was already saved"
 
 run_case "6  exit 139, 'Snapshot saved successfully', no failure phrase -> tolerated, 0" \
     segv-saved 0 no \
