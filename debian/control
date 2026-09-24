@@ -5,6 +5,8 @@ Maintainer: JShin <11dash11@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
 Homepage: https://github.com/11dash11/timeshift-on-demand
+Vcs-Git: https://github.com/11dash11/timeshift-on-demand.git
+Vcs-Browser: https://github.com/11dash11/timeshift-on-demand
 Rules-Requires-Root: no
 
 Package: timeshift-on-demand
@@ -15,6 +17,7 @@ Depends: ${misc:Depends},
          python3-gi,
          gir1.2-gtk-3.0,
          pkexec,
+         systemd,
          zenity,
          libnotify-bin
 Recommends: gir1.2-ayatanaappindicator3-0.1 | gir1.2-appindicator3-0.1

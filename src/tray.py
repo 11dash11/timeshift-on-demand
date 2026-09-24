@@ -36,7 +36,7 @@ def build_tray(app, on_backup_now, on_show_window, on_quit):
         return None
 
     indicator = AppIndicator3.Indicator.new(
-        "timeshift-companion",
+        "timeshift-on-demand",
         "drive-harddisk",
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
     )

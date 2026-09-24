@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+# The resume hook's log (and logrotate's rotated copies) aren't owned by
+# the package, so remove them only on purge.
+if [ "$1" = "purge" ]; then
+	rm -f /var/log/timeshift-on-demand-resume-hook.log \
+		/var/log/timeshift-on-demand-resume-hook.log.*
+fi
+
+#DEBHELPER#
+
+exit 0
