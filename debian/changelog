@@ -1,3 +1,15 @@
+timeshift-on-demand (0.1.0~dev17) UNRELEASED; urgency=low
+
+  * logrotate: added `su root root` to the resume-hook log's stanza.
+    `sudo logrotate -d /etc/logrotate.d/timeshift-on-demand` on the
+    Samsung refused the file ("parent directory has insecure
+    permissions"), because /var/log is group-writable (root:syslog) on
+    Ubuntu. The nightly run was very likely fine already, since Ubuntu's
+    /etc/logrotate.conf sets `su root adm` globally before including
+    logrotate.d; this makes the stanza correct on its own.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 24 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev16) UNRELEASED; urgency=low
 
   * Docs: removed every reference to the unpublished PROJECT.md and to
