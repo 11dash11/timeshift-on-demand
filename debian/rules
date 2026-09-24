@@ -15,6 +15,5 @@ override_dh_fixperms:
 	chmod 0755 debian/timeshift-on-demand/usr/bin/timeshift-on-demand-prompt
 	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
 	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
-	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper
 	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor
 	chmod 0755 debian/timeshift-on-demand/usr/lib/systemd/system-sleep/timeshift-on-demand-resume-hook

@@ -1,9 +1,10 @@
 """
 status.py — read-only Timeshift + backup-drive status.
 
-Replaces timeshift-status.sh. No privilege required for any of these
-except `timeshift --list`, which Timeshift itself permits as read-only
-for the snapshot metadata (falls back gracefully if it errors).
+Replaces timeshift-status.sh. No privilege required for any of these —
+including the snapshot list, which is read straight from Timeshift's
+world-readable snapshot folders on the mounted backup drive (see
+get_snapshots()), not via `timeshift --list`.
 
 Systemd-unit status reporting from the first-pass draft has been
 dropped: this package installs no systemd units of its own (the
@@ -29,35 +30,22 @@ from typing import Optional
 
 SNAPSHOT_RE = re.compile(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}")
 
-LIST_HELPER = "/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper"
-
-# Same pkexec return-value contract as backup_runner.py (`man pkexec`,
-# RETURN VALUE) — named here too so get_snapshots()'s error message can
-# distinguish "you said no" / "auth is broken" from a real Timeshift
-# failure, instead of lumping all three together.
-PKEXEC_EXIT_DISMISSED = 126
-PKEXEC_EXIT_NOT_AUTHORIZED = 127
-
-# `_run()`'s default 15s timeout (meant for fast unprivileged queries like
-# findmnt/lsblk) is nowhere near enough for a pkexec call: confirmed via a
-# real screenshot during Samsung RF511 testing — "Command ['pkexec', ...]
-# timed out after 15 seconds" fired while the user was still typing their
-# password into the graphical polkit dialog, killing the process out from
-# under them. A human taking >15s to see a dialog and type a password is
-# completely ordinary, not an edge case. 120s is generous for that without
-# hanging indefinitely if the dialog is truly abandoned.
-PKEXEC_TIMEOUT_S = 120
-
 
 @dataclass
 class SnapshotInfo:
-    tags: list[str] = field(default_factory=list)
-    raw_output: str = ""
+    # Snapshot names (their start timestamps), oldest first.
+    names: list[str] = field(default_factory=list)
+    # Timeshift's current tags for the newest snapshot, e.g. "ondemand" or
+    # "daily" (Timeshift's scheduler can re-tag an on-demand snapshot later).
+    latest_tags: str = ""
+    # Snapshot folders with no info.json: a run still in progress, or one
+    # that died before finishing.
+    incomplete: int = 0
     error: Optional[str] = None
 
     @property
     def latest(self) -> Optional[str]:
-        return self.tags[-1] if self.tags else None
+        return self.names[-1] if self.names else None
 
 
 @dataclass
@@ -87,42 +75,50 @@ def _run(cmd: list[str], timeout: int = 15) -> subprocess.CompletedProcess:
 
 def get_snapshots() -> SnapshotInfo:
     """
-    List known snapshots (newest last). Confirmed (2026-08-29 testing,
-    this machine): `timeshift --list` refuses unconditionally without
-    root ("Application needs admin access", exit 1) — this is
-    unconditional Timeshift behavior (only --version/--help work
-    unprivileged), not a config quirk, so a plain unprivileged call is
-    pointless here. Goes through the bundled list-helper via `pkexec`
-    instead — see packaging/helpers/timeshift-on-demand-list-helper and
-    packaging/README.md.
+    List Timeshift's snapshots (oldest first) without any privilege, by
+    reading its RSYNC-mode layout on the backup drive directly:
+    <mount>/timeshift/snapshots/<YYYY-MM-DD_HH-MM-SS>/info.json. Timeshift
+    creates those folders 0755 and info.json 0644 (confirmed on both the
+    Dell and the Samsung, 2026-09-24), and writes info.json only once a
+    snapshot has finished, so a folder without one is counted as
+    incomplete rather than as a snapshot.
 
-    Strictly read-only, same as the helper itself: this function must
-    never be called from a silent/automatic refresh path (see app.py's
-    Dashboard — the 30s auto-tick deliberately does not call this) since
-    every call is a real pkexec authorization request, not a free query.
-    Callers should only invoke this from an explicit user action (window
-    open, a manual Refresh click, once after a backup completes).
+    This replaced a `pkexec timeshift --list` call. That needed an admin
+    password every time the window opened, and wasn't read-only either:
+    Timeshift rewrites its /etc/cron.d files and may mount the backup
+    device on every run. The cost of reading the drive directly is that
+    it must already be mounted (by the desktop, as for backups) — this
+    no longer mounts it. Cheap enough to call from the auto-refresh timer.
     """
+    config = _timeshift_config()
+    if config is None:
+        return SnapshotInfo(error="Timeshift isn't configured yet (no /etc/timeshift/timeshift.json)")
+    if str(config.get("btrfs_mode", "false")).lower() == "true":
+        return SnapshotInfo(error="Timeshift is in BTRFS mode — use “Open Timeshift” to see snapshots")
+    uuid = config.get("backup_device_uuid")
+    if not uuid:
+        return SnapshotInfo(error="Timeshift has no backup device configured yet")
+    mount = find_backup_mount(uuid)
+    if not mount:
+        return SnapshotInfo(error="Timeshift's backup drive isn't mounted")
+
+    snap_dir = Path(mount) / "timeshift" / "snapshots"
     try:
-        result = _run(["pkexec", LIST_HELPER], timeout=PKEXEC_TIMEOUT_S)
-    except FileNotFoundError as exc:
-        return SnapshotInfo(error=str(exc))
-    except subprocess.TimeoutExpired:
-        return SnapshotInfo(
-            error=f"timed out waiting {PKEXEC_TIMEOUT_S}s for authentication — try Refresh again"
-        )
+        entries = sorted(p for p in snap_dir.iterdir() if p.is_dir() and SNAPSHOT_RE.fullmatch(p.name))
+    except FileNotFoundError:
+        return SnapshotInfo()  # drive mounted, Timeshift hasn't created a snapshot on it yet
+    except OSError as exc:
+        return SnapshotInfo(error=f"can't read {snap_dir}: {exc.strerror}")
 
-    tags = SNAPSHOT_RE.findall(result.stdout)
-    if result.returncode != 0 and not tags:
-        if result.returncode == PKEXEC_EXIT_DISMISSED:
-            message = "authentication dialog was dismissed"
-        elif result.returncode == PKEXEC_EXIT_NOT_AUTHORIZED:
-            message = "authentication failed or was denied (pkexec exit 127)"
-        else:
-            message = (result.stdout.strip() + " " + result.stderr.strip()).strip()
-        return SnapshotInfo(error=message or f"timeshift --list exited {result.returncode}")
-
-    return SnapshotInfo(tags=tags, raw_output=result.stdout)
+    names = [p.name for p in entries if (p / "info.json").is_file()]
+    info = SnapshotInfo(names=names, incomplete=len(entries) - len(names))
+    if names:
+        try:
+            data = json.loads((snap_dir / names[-1] / "info.json").read_text(encoding="utf-8"))
+            info.latest_tags = str(data.get("tags", ""))
+        except (OSError, json.JSONDecodeError):
+            pass  # count and name are still right; tags are just a nicety
+    return info
 
 
 def get_backup_drive_usage(mount_point: str) -> DiskUsage:
@@ -192,11 +188,16 @@ def get_timeshift_backup_device_uuid() -> Optional[str]:
     is empty (Timeshift never configured, e.g. its first-run setup wasn't
     completed yet).
     """
+    data = _timeshift_config()
+    return (data or {}).get("backup_device_uuid") or None
+
+
+def _timeshift_config() -> Optional[dict]:
+    """/etc/timeshift/timeshift.json (world-readable), or None if missing/unreadable."""
     try:
-        data = json.loads(TIMESHIFT_CONFIG.read_text(encoding="utf-8"))
+        return json.loads(TIMESHIFT_CONFIG.read_text(encoding="utf-8"))
     except (FileNotFoundError, PermissionError, json.JSONDecodeError):
         return None
-    return data.get("backup_device_uuid") or None
 
 
 def list_candidate_drives() -> list[DriveInfo]:

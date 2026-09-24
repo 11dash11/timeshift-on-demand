@@ -9,10 +9,11 @@ This walks through all of them.
 
 A read-only glance:
 
-- **Snapshots** — total count and the latest tag, read via a privileged
-  (`pkexec`) call to Timeshift — see
-  [Understanding privilege prompts](#understanding-privilege-prompts)
-  below for why this needs authentication at all.
+- **Snapshots** — total count, the latest snapshot and its current
+  Timeshift tag, read straight from Timeshift's snapshot folders on the
+  backup drive. No password needed; the drive just has to be mounted.
+  If a snapshot folder exists without Timeshift's `info.json`, it's shown
+  as "incomplete" (a backup still running, or one that didn't finish).
 - **Backup drive** — usage of whichever drive is configured in Settings,
   if it's currently mounted.
 - **Refresh** / **Open Timeshift** — Refresh re-fetches both; Open
@@ -25,11 +26,8 @@ aren't automatically pruned by Timeshift's own retention settings — see
 [troubleshooting.md](troubleshooting.md#on-demand-snapshots-keep-piling-up)
 if that becomes relevant.
 
-The Dashboard does **not** auto-refresh the snapshot count on a timer —
-only Refresh, opening the app, and a successful backup trigger it. This
-is deliberate: it's a privileged call each time, and refreshing silently
-every 30 seconds would mean repeated authentication prompts just for
-having the window open.
+The Dashboard refreshes itself every 30 seconds, after every backup,
+and when you click Refresh.
 
 ## Backup tab
 
@@ -143,17 +141,17 @@ if you expected it to show and it didn't.
 ## Understanding privilege prompts
 
 You'll be asked to authenticate (password/fingerprint, via `polkit`) for
-three specific things, each separately and narrowly scoped — Companion
+two specific things, each separately and narrowly scoped — Companion
 itself never runs as root:
 
 | When | What | How often |
 |---|---|---|
 | Clicking "Backup Now" / auto-prompt confirm | Creating the actual snapshot | Every time |
 | Clicking "Fix Scheduling" | Disabling a reappeared legacy cron file | Every time |
-| Opening the app / clicking Refresh / after a successful backup | Reading the snapshot list | Cached briefly, so rapid repeat clicks shouldn't re-prompt |
+
+Opening the app and viewing the Dashboard never asks for a password.
 
 This is deliberate — Companion depends on `polkit` for authorization
 rather than a standing passwordless grant, so every privileged action
-genuinely requires you to say yes each time (except the read-only list
-action, which caches briefly). See the top-level `README.md`'s
+genuinely requires you to say yes each time. See the top-level `README.md`'s
 "Privilege model" section for the full reasoning.

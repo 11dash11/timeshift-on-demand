@@ -16,7 +16,6 @@ packaging/bin/timeshift-on-demand-prompt usr/bin/
 
 packaging/helpers/timeshift-on-demand-backup-helper usr/lib/timeshift-on-demand/
 packaging/helpers/timeshift-on-demand-cronfix-helper usr/lib/timeshift-on-demand/
-packaging/helpers/timeshift-on-demand-list-helper usr/lib/timeshift-on-demand/
 packaging/bin/timeshift-on-demand-gui-monitor usr/lib/timeshift-on-demand/
 
 packaging/polkit/io.github.11dash11.timeshiftondemand.policy usr/share/polkit-1/actions/

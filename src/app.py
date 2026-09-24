@@ -113,15 +113,9 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
 
     def refresh_dashboard(self) -> None:
         """
-        Full refresh: snapshot info (privileged — a real pkexec call each
-        time, see status.get_snapshots()) plus drive status (cheap,
-        unprivileged). Call this only from explicit user actions or
-        one-time triggers — window open, a manual Refresh click, once
-        after a backup completes — never from the silent auto-refresh
-        timer (see _on_status_refresh_tick, which calls
-        _refresh_drive_status() only). Prompting for authentication every
-        30 seconds just because the window is open would be exactly the
-        kind of nagging this project has otherwise avoided.
+        Snapshot info plus drive status. Both are unprivileged local reads
+        (see status.get_snapshots()), so this runs on window open, Refresh,
+        after a backup, and from the 30s auto-refresh timer.
         """
         self._refresh_snapshot_info()
         self._refresh_drive_status()
@@ -130,10 +124,13 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         snaps = status.get_snapshots()
         if snaps.error:
             self.snapshot_label.set_text(f"Snapshots: unavailable — {snaps.error}")
-        else:
-            count = len(snaps.tags)
-            latest = snaps.latest or "none"
-            self.snapshot_label.set_text(f"Snapshots: {count} total, latest {latest}")
+            return
+        text = f"Snapshots: {len(snaps.names)} total, latest {snaps.latest or 'none'}"
+        if snaps.latest_tags:
+            text += f" ({snaps.latest_tags})"
+        if snaps.incomplete:
+            text += f" — plus {snaps.incomplete} incomplete (in progress, or a run that didn't finish)"
+        self.snapshot_label.set_text(text)
 
     def _refresh_drive_status(self) -> None:
         drive_uuid = config.load_settings().backup_drive_uuid
@@ -156,9 +153,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             )
 
     def _on_status_refresh_tick(self) -> bool:
-        # Deliberately drive-status only — see refresh_dashboard()'s
-        # docstring for why snapshot info is excluded from this timer.
-        self._refresh_drive_status()
+        self.refresh_dashboard()
         return True  # keep the timeout running
 
     def _on_open_timeshift_clicked(self, *_args) -> None:
@@ -231,17 +226,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         else:
             self.status_line.set_text(f"Backup failed (exit code {result.exit_code}).")
 
-        # Only spend the privileged snapshot-list refresh (a real pkexec
-        # prompt each time, see status.get_snapshots()) when a snapshot
-        # may actually have been created. A failed or skipped attempt
-        # didn't change the snapshot count, so re-fetching it would just
-        # be another authentication prompt for no new information —
-        # confirmed as real friction during Samsung RF511 testing, where
-        # repeated failed attempts each cost two prompts instead of one.
-        if result.success:
-            self.refresh_dashboard()
-        else:
-            self._refresh_drive_status()
+        self.refresh_dashboard()
         return False  # one-shot idle call
 
     def _on_log_poll_tick(self) -> bool:
@@ -316,9 +301,6 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         config.save_settings(config.Settings(backup_drive_uuid=uuid))
         self.runner.drive_uuid = uuid
         self.settings_status_label.set_text(f"Saved. Backup drive set to: {uuid}")
-        # Drive-status only, not the full refresh_dashboard() — picking a
-        # drive doesn't change the snapshot count, so there's no reason to
-        # spend a pkexec prompt on it (see refresh_dashboard()'s docstring).
         self._refresh_drive_status()
 
     def _on_clear_drive_clicked(self, *_args) -> None:
@@ -364,8 +346,6 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         # which isn't an error, just an informed no-op.
         prefix = "Fix applied successfully." if ok else "Fix not applied:"
         self.fix_result_label.set_text(f"{prefix}\n{detail}")
-        # Drive-status only — a cron/scheduling fix doesn't touch the
-        # snapshot count either, same reasoning as the Settings tab above.
         self._refresh_drive_status()
 
     # ------------------------------------------------------------------

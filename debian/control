@@ -30,8 +30,7 @@ Description: on-demand backup companion for Timeshift
  .
  This package depends on the official timeshift package rather than
  bundling or forking it, and does not touch snapshot browsing, restore,
- or deletion — those remain Timeshift's own responsibility. Its three
- privileged actions (creating a snapshot, disabling a reappeared legacy
- cron file, and reading the snapshot list) are each authorized
- individually via polkit/pkexec; the application itself never runs as
- root.
+ or deletion — those remain Timeshift's own responsibility. Its two
+ privileged actions (creating a snapshot, and disabling a reappeared
+ legacy cron file) are each authorized individually via polkit/pkexec;
+ the application itself never runs as root.
