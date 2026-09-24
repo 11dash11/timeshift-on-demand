@@ -1,3 +1,23 @@
+timeshift-on-demand (0.1.0~dev15) UNRELEASED; urgency=low
+
+  * Fixed the GApplication ID: io.github.11dash11.timeshiftondemand ->
+    io.github._11dash11.timeshiftondemand. No element of a GApplication
+    ID may start with a digit, so GLib had silently dropped the ID since
+    dev8's namespace rename (GLib-GIO-CRITICAL at startup). With no ID,
+    single-instance behavior was off: launching the app a second time
+    started a second copy, with its own window and tray icon, instead of
+    raising the first. Verified from source: before the fix, a second
+    launch ran as its own instance; after it, the second launch hands
+    off to the first and exits immediately.
+  * Renamed the launcher to io.github._11dash11.timeshiftondemand.desktop
+    to match the new ID, so the desktop can link the running window to
+    its launcher. A launcher pinned to the old name may need re-pinning
+    after upgrading.
+  * The polkit action IDs (io.github.11dash11.timeshiftondemand.*) are
+    unchanged; polkit allows them.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 24 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev14) UNRELEASED; urgency=low
 
   * Dashboard: the snapshot count is now read straight from Timeshift's
