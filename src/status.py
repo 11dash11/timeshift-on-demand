@@ -6,15 +6,10 @@ including the snapshot list, which is read straight from Timeshift's
 world-readable snapshot folders on the mounted backup drive (see
 get_snapshots()), not via `timeshift --list`.
 
-Systemd-unit status reporting from the first-pass draft has been
-dropped: this package installs no systemd units of its own (the
-drive-connect auto-trigger chain — udev rule, trigger.service, user
-unit — was retired per PROJECT.md, "Drive-trigger" decision), and
-timeshift-backup.service/.timer were intentionally deleted on the
-reference machine (see
-projects/script-consolidation/docs/decisions-log.md, item 12) — neither
-is something a fresh install elsewhere would have. There is nothing
-meaningful left to report here.
+There's no systemd-unit status here: this package installs no systemd
+units of its own (the drive-connect trigger is parked, unwired, in
+packaging/future/drive-connect-trigger/), and Timeshift's own
+timeshift-backup.service/.timer aren't something a normal install has.
 """
 
 from __future__ import annotations

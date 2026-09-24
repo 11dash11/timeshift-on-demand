@@ -7,7 +7,7 @@ for $XDG_DATA_HOME). Currently the only setting is which backup drive
 (by filesystem UUID, not mount point — mount points move, UUIDs don't)
 the Backup tab should wait for before running a backup.
 
-No first-run wizard, per PROJECT.md's "Drive config" decision: an absent
+No first-run wizard, by design: an absent
 config file just means "not configured yet" — BackupRunner handles a
 None uuid by reporting that clearly instead of guessing or blocking
 startup. The Settings tab (app.py) is the only way to set or change it.

@@ -6,7 +6,7 @@
   Modeled on Timeshift's own policy file
   (/usr/share/polkit-1/actions/in.teejeetech.pkexec.timeshift.policy),
   but scoped to Companion's two specific helper scripts instead of the
-  whole timeshift-gtk process — see PROJECT.md, "Privilege model".
+  whole timeshift-gtk process (see README.md, "Privilege model").
 
   io.github.11dash11.timeshiftondemand.* is the project's real reverse-DNS
   namespace, based on its published GitHub identity (io.github.<user>.<app>,

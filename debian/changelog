@@ -1,3 +1,26 @@
+timeshift-on-demand (0.1.0~dev16) UNRELEASED; urgency=low
+
+  * Docs: removed every reference to the unpublished PROJECT.md and to
+    private workspace paths from code comments and docs; rewrote
+    packaging/README.md, which still described pre-release plans, to
+    match the current code; added the missing `git clone` step to the
+    install instructions; turning off the login prompt now uses the XDG
+    per-user override (~/.config/autostart/..., Hidden=true).
+  * Packaging: debian/source/format 3.0 (native), so lintian's source
+    checks run (a full source+binary build is lintian-clean with
+    --pedantic); Depends on systemd; Vcs-* fields; the resume-hook log is
+    rotated weekly by logrotate and removed on purge; the helper tests
+    run during the package build.
+  * backup.log is kept under control: past 1 MiB, only the last 256 KiB
+    is kept (checked at the start of each run by both the prompt and the
+    Backup tab).
+  * The app is activated once per launch (removed a duplicate activate
+    handler), and the prompt's done-flag file now lives in
+    $XDG_RUNTIME_DIR instead of /tmp. The tray indicator id is now
+    "timeshift-on-demand".
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 24 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev15) UNRELEASED; urgency=low
 
   * Fixed the GApplication ID: io.github.11dash11.timeshiftondemand ->

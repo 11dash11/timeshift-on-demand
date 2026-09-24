@@ -39,6 +39,10 @@ def _data_dir() -> Path:
 
 LOGFILE = _data_dir() / "backup.log"
 BACKUP_HELPER = "/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
+# Past LOG_MAX_BYTES, keep only the last LOG_KEEP_BYTES (checked at the
+# start of each run). Same limits as timeshift-on-demand-prompt.
+LOG_MAX_BYTES = 1024 * 1024
+LOG_KEEP_BYTES = 256 * 1024
 DRIVE_WAIT_ATTEMPTS = 36
 DRIVE_WAIT_INTERVAL_S = 5
 
@@ -48,6 +52,20 @@ DRIVE_WAIT_INTERVAL_S = 5
 # itself) must not be confused with "user said no" or "auth broken".
 PKEXEC_EXIT_DISMISSED = 126  # user dismissed the authentication dialog
 PKEXEC_EXIT_NOT_AUTHORIZED = 127  # auth failed/denied, or no matching policy action
+
+
+def _trim_log() -> None:
+    try:
+        if LOGFILE.stat().st_size <= LOG_MAX_BYTES:
+            return
+        with open(LOGFILE, "rb") as f:
+            f.seek(-LOG_KEEP_BYTES, os.SEEK_END)
+            tail = f.read()
+        tmp = LOGFILE.with_suffix(".log.tmp")
+        tmp.write_bytes(tail)
+        tmp.replace(LOGFILE)
+    except OSError:
+        pass  # a log we can't trim is not a reason to skip the backup
 
 
 @dataclass
@@ -106,6 +124,7 @@ class BackupRunner:
             return
         self.is_running = True
         self.result = None
+        _trim_log()
         self._thread = threading.Thread(
             target=self._run, args=(on_done,), daemon=True
         )

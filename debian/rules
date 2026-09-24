@@ -17,3 +17,10 @@ override_dh_fixperms:
 	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
 	chmod 0755 debian/timeshift-on-demand/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor
 	chmod 0755 debian/timeshift-on-demand/usr/lib/systemd/system-sleep/timeshift-on-demand-resume-hook
+
+# Run the backup helper's crash-tolerance tests (a fake timeshift; no
+# root needed) as part of every build, unless DEB_BUILD_OPTIONS=nocheck.
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	bash tests/run-tests.sh
+endif

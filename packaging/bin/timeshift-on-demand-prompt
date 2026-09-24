@@ -12,16 +12,16 @@
 # (timeshift-on-demand) is open or not — this script never touches it,
 # so there's no single-instance/GApplication concern to worry about here.
 #
-# Ports the previously unpromoted timeshift-ondemand-backup.sh draft's
-# "live monitor window" behavior (see projects/timeshift-monitor-backup/)
-# with two portability fixes: `sudo` -> `pkexec` against Companion's own
+# Ports the "live monitor window" behavior of the author's earlier
+# standalone timeshift-ondemand-backup.sh script, with two portability
+# fixes: `sudo` -> `pkexec` against Companion's own
 # bundled helper, and the hardcoded drive UUID replaced by whatever the
 # user configured in Companion's Settings tab
 # (~/.config/timeshift-on-demand/config.json — see src/config.py).
 #
 # No time-window restriction (the old script's 16:00-17:30
-# scheduled-backup-slot block) — on-demand runs are always allowed, per
-# PROJECT.md. Shares its log file with the GUI's own BackupRunner
+# scheduled-backup-slot block) — on-demand runs are always allowed.
+# Shares its log file with the GUI's own BackupRunner
 # (src/backup_runner.py) so both paths' history lands in one place.
 
 LOGFILE="${XDG_DATA_HOME:-$HOME/.local/share}/timeshift-on-demand/backup.log"
@@ -30,6 +30,13 @@ BACKUP_HELPER="/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/timeshift-on-demand/config.json"
 
 mkdir -p "$(dirname "$LOGFILE")"
+
+# Keep the log from growing forever (each run appends thousands of
+# progress fragments): past 1 MiB, keep the last 256 KiB. Same limits as
+# src/backup_runner.py.
+if [[ -f "$LOGFILE" && $(stat -c %s "$LOGFILE") -gt 1048576 ]]; then
+    tail -c 262144 "$LOGFILE" > "$LOGFILE.tmp" && mv "$LOGFILE.tmp" "$LOGFILE"
+fi
 
 log() {
     local level=$1; shift
@@ -88,7 +95,10 @@ fi
 
 log_info "User confirmed backup, starting."
 
-DONEFLAG=$(mktemp -u /tmp/timeshift-on-demand-status.XXXXXX)
+# In $XDG_RUNTIME_DIR (0700, this user's only) rather than /tmp, where
+# another local user could create the file at the predicted name first
+# and feed the monitor window a fake result.
+DONEFLAG=$(mktemp -u "${XDG_RUNTIME_DIR:-/tmp}/timeshift-on-demand-status.XXXXXX")
 rm -f "$DONEFLAG"   # mktemp -u shouldn't create it, but be sure
 MONITOR_LAUNCHED=false
 
