@@ -1,4 +1,10 @@
 /var/log/timeshift-on-demand-resume-hook.log {
+	# /var/log is group-writable (root:syslog) on Ubuntu, and logrotate
+	# refuses such a directory without an `su` line. Ubuntu's global
+	# /etc/logrotate.conf sets `su root adm`, but naming it here keeps this
+	# file correct on its own (e.g. `logrotate -d` on just this file). The
+	# log is root:root.
+	su root root
 	weekly
 	rotate 4
 	compress
