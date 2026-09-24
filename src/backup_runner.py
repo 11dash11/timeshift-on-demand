@@ -124,14 +124,27 @@ class BackupRunner:
         return None
 
     def _run(self, on_done: Optional[Callable[[BackupResult], None]]) -> None:
+        # Whatever happens inside _run_backup(), _finish() must run —
+        # otherwise is_running stays True and Backup Now is silently
+        # ignored until the app is restarted.
         started = datetime.now()
+        result = BackupResult(started, started, exit_code=-1, drive_mounted=False)
+        try:
+            result = self._run_backup(started)
+        except Exception as exc:  # noqa: BLE001 — must not escape the worker thread
+            self._log(f"Backup runner error: {exc!r}")
+            # drive_mounted=True so the GUI reports "failed", not "did not
+            # run" — we can't know how far the attempt got.
+            result = BackupResult(started, datetime.now(), exit_code=-1, drive_mounted=True)
+        finally:
+            self._finish(result, on_done)
+
+    def _run_backup(self, started: datetime) -> BackupResult:
         self._log("Backup started.")
 
         if not self.drive_uuid:
             self._log("No backup drive configured — open Settings to choose one.")
-            result = BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-            self._finish(result, on_done)
-            return
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
 
         # Fail fast, before waiting on the drive or spending a pkexec
         # prompt: confirmed via real testing (Samsung RF511, 2026-08-30)
@@ -152,9 +165,7 @@ class BackupRunner:
                 "Timeshift and complete its setup (pick a backup drive) before "
                 "running an on-demand backup from here."
             )
-            result = BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-            self._finish(result, on_done)
-            return
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
         if ts_uuid != self.drive_uuid:
             self._log(
                 f"Timeshift is configured to back up to a different device "
@@ -164,36 +175,41 @@ class BackupRunner:
                 f"Settings to match Timeshift's, before running an on-demand "
                 f"backup."
             )
-            result = BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-            self._finish(result, on_done)
-            return
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
 
         mount = self._wait_for_drive()
         if not mount:
             self._log("Backup drive not mounted after wait — aborting (non-fatal).")
-            result = BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-            self._finish(result, on_done)
-            return
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
 
         self._log(f"Running {BACKUP_HELPER} via pkexec ...")
+        # Streamed line by line (text mode also splits on timeshift's \r
+        # progress updates), so the Backup tab's log is live rather than
+        # appearing all at once when the helper exits.
+        #
+        # Deliberately no timeout. Once authenticated, pkexec's child runs
+        # as root, so this unprivileged process can't kill it anyway —
+        # the old 1-hour subprocess.run timeout raised PermissionError from
+        # kill() (escaping the TimeoutExpired handler and wedging
+        # is_running), while closing the pipe out from under a still-running
+        # backup. A first full rsync backup to USB can legitimately take
+        # longer than an hour.
+        exit_code = -1
         try:
-            proc = subprocess.run(
+            with subprocess.Popen(
                 ["pkexec", BACKUP_HELPER],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
-                timeout=3600,
-                check=False,
-            )
-            for line in (proc.stdout + proc.stderr).splitlines():
-                if line.strip():
-                    self._log(line.strip())
+                encoding="utf-8",
+                errors="replace",
+            ) as proc:
+                for line in proc.stdout:
+                    if line.strip():
+                        self._log(line.strip())
             exit_code = proc.returncode
-        except subprocess.TimeoutExpired:
-            self._log("Backup timed out after 1 hour — treating as failure.")
-            exit_code = -1
-        except FileNotFoundError as exc:
+        except OSError as exc:
             self._log(f"Could not launch pkexec: {exc}")
-            exit_code = -1
 
         if exit_code == 0:
             self._log("Backup completed successfully.")
@@ -207,8 +223,7 @@ class BackupRunner:
         else:
             self._log(f"Backup finished with exit code {exit_code}.")
 
-        result = BackupResult(started, datetime.now(), exit_code=exit_code, drive_mounted=True)
-        self._finish(result, on_done)
+        return BackupResult(started, datetime.now(), exit_code=exit_code, drive_mounted=True)
 
     def _finish(self, result: BackupResult, on_done: Optional[Callable[[BackupResult], None]]) -> None:
         self.result = result

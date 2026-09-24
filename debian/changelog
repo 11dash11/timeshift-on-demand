@@ -1,3 +1,31 @@
+timeshift-on-demand (0.1.0~dev12) UNRELEASED; urgency=low
+
+  * Backup tab: the privileged helper's output now streams into the log
+    view live, instead of appearing all at once when the backup ends.
+  * Removed the Backup tab's 1-hour timeout. Once pkexec has
+    authenticated, its child runs as root and can't be killed from the
+    unprivileged app: on timeout, kill() raised PermissionError, which
+    escaped the TimeoutExpired handler, killed the worker thread, and
+    left Backup Now disabled until restart. It also closed the pipe on a
+    backup that was still running. A first full backup to USB can
+    legitimately take longer than an hour.
+  * The backup worker now always reports a result, even if something
+    unexpected goes wrong inside it, so Backup Now can't get stuck
+    disabled.
+  * backup-helper: `tee -p` ignores SIGPIPE, so a backup keeps running if
+    Companion quits or its pipe closes mid-run. Previously the next
+    progress write would SIGPIPE timeshift and abort the snapshot.
+  * polkit: dropped org.freedesktop.policykit.exec.allow_gui from all
+    three actions. None of the helpers needs a display, and keeping
+    DISPLAY in the root environment is the likely reason timeshift's
+    D-Bus autolaunch fallback spawned the root dbus-launch/dbus-daemon
+    pair behind the dev11 resume-hook wedge. Not yet verified on
+    hardware.
+  * docs/usage.md: the Backup tab log is now described as live; notes
+    that quitting Companion doesn't cancel a running backup.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 24 Sep 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev11) UNRELEASED; urgency=low
 
   * Hardened the resume-from-suspend hook against a real silent-outage

@@ -61,11 +61,17 @@ set -u
 #      the whole command finishes. `tee` also captures a copy to a temp
 #      file so the failure-phrase scan below still has the full output
 #      to check, same as before.
+#
+# `tee -p` (--output-error=warn-nopipe): if whoever is reading this
+# script's stdout goes away mid-run (Companion quit, or its pipe closed),
+# tee ignores SIGPIPE and keeps writing $TMP_OUTPUT instead of dying —
+# otherwise timeshift's next progress write would hit a broken pipe and
+# SIGPIPE would kill the backup partway through.
 TMP_OUTPUT=$(mktemp)
 trap 'rm -f "$TMP_OUTPUT"' EXIT
 
 stdbuf -o0 -e0 /usr/bin/timeshift --create --tags D --scripted 2>&1 \
-    | stdbuf -o0 tee "$TMP_OUTPUT"
+    | stdbuf -o0 tee -p "$TMP_OUTPUT"
 ts_status=${PIPESTATUS[0]}
 output=$(cat "$TMP_OUTPUT")
 

@@ -12,6 +12,14 @@
   namespace, based on its published GitHub identity (io.github.<user>.<app>,
   the standard freedesktop/Flatpak convention for a project with no owned
   domain). Replaced an earlier org.timeshiftondemand.app.* placeholder.
+
+  No org.freedesktop.policykit.exec.allow_gui on any action: none of the
+  helpers needs a display. Keeping DISPLAY/XAUTHORITY in the root
+  environment is also the likely way timeshift's D-Bus fallback managed
+  to autolaunch the root dbus-launch/dbus-daemon pair behind the
+  2026-09-19 resume-hook wedge (see the resume hook's header, item 4):
+  X11 autolaunch refuses outright without DISPLAY instead of spawning
+  anything. Not yet confirmed on hardware.
 -->
 <policyconfig>
   <vendor>Timeshift On Demand</vendor>
@@ -27,7 +35,6 @@
       <allow_active>auth_admin</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper</annotate>
-    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 
   <action id="io.github.11dash11.timeshiftondemand.cronfix">
@@ -40,7 +47,6 @@
       <allow_active>auth_admin</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper</annotate>
-    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 
   <action id="io.github.11dash11.timeshiftondemand.list">
@@ -63,6 +69,5 @@
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-list-helper</annotate>
-    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 </policyconfig>

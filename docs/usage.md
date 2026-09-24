@@ -50,11 +50,13 @@ below for why this is asked separately from your login password.
 ![Backup tab, running](images/backup-running.png)
 
 While running, the button disables and the status line updates. The log
-below streams what actually happened — useful for diagnosing a failure
-without needing to go find a log file. (Note: this in-app log shows
-everything once the privileged step finishes, not incrementally line by
-line the way the standalone monitor window does — see
-[Auto-prompts](#auto-prompts-login-and-resume) below for that one.)
+below streams the backup's progress live, line by line, as it happens —
+useful for diagnosing a failure without needing to go find a log file.
+
+Quitting Companion (tray → Quit) while a backup is running doesn't
+cancel it: the backup itself carries on to completion in the
+background, it just won't be shown in the window anymore. Its outcome
+still lands in Timeshift's own logs.
 
 ![Backup tab, done](images/backup-done.png)
 
@@ -126,8 +128,8 @@ was never manually opened:
 1. A `zenity` Yes/No dialog: *"Do you want to start the on-demand
    Timeshift backup now?"*
 2. On **Yes**, a small standalone monitor window opens, streaming the
-   backup's progress live, line by line, as it happens — genuinely
-   incremental, unlike the in-app Backup tab's log.
+   backup's progress live, line by line, as it happens — same as the
+   in-app Backup tab's log.
 3. It auto-closes a few seconds after a successful finish, or stays
    open until you close it if the backup failed.
 4. A desktop notification also appears either way, independent of
