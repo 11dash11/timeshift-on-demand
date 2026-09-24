@@ -1,0 +1,148 @@
+#!/bin/bash
+#
+# Fake `timeshift` for tests/run-tests.sh. Never touches a real system.
+#
+# Behaviour is chosen by FAKE_TIMESHIFT_SCENARIO. Each scenario defines:
+#   - what `timeshift --create --tags D --scripted` prints and exits with
+#   - what `timeshift --list` prints (none / old / recent snapshot)
+#
+# Every invocation is appended to $FAKE_TIMESHIFT_LOG (one line of args),
+# so the harness can assert whether the helper called `--list` at all.
+#
+# While handling --create, it also records how many entries are in
+# $TMPDIR. The helper's mktemp file should exist at that moment, which
+# proves the harness's private TMPDIR is really where mktemp writes, so an
+# empty TMPDIR afterwards really does mean the EXIT trap cleaned up.
+
+set -u
+
+: "${FAKE_TIMESHIFT_SCENARIO:?FAKE_TIMESHIFT_SCENARIO must be set}"
+: "${FAKE_TIMESHIFT_LOG:?FAKE_TIMESHIFT_LOG must be set}"
+
+echo "$*" >> "$FAKE_TIMESHIFT_LOG"
+
+# Same shape as real `timeshift --list` output; timestamps are generated
+# relative to now, in the YYYY-MM-DD_HH-MM-SS form the helper greps for.
+list_header() {
+    cat <<'EOF'
+Mounted '/dev/sdb1' at '/run/timeshift/12345/backup'
+Device : /dev/sdb1
+UUID   : 0f0e0d0c-0b0a-0908-0706-050403020100
+Path   : /run/timeshift/12345/backup
+Mode   : RSYNC
+Status : OK
+EOF
+}
+
+list_snapshots() {
+    # $@ = snapshot timestamps, oldest first (as real timeshift lists them)
+    list_header
+    echo "$# snapshots, 120.5 GB free"
+    echo
+    echo "Num     Name                 Tags  Description"
+    echo "------------------------------------------------------------------------------"
+    local i=0 ts
+    for ts in "$@"; do
+        printf '%-4s >  %s  D     \n' "$i" "$ts"
+        i=$((i + 1))
+    done
+}
+
+list_none() {
+    list_header
+    echo
+    echo "No snapshots found"
+}
+
+stamp() { date -d "$1" +%Y-%m-%d_%H-%M-%S; }
+
+old_list()    { list_snapshots "$(stamp '3 days ago')" "$(stamp '10 minutes ago')"; }
+recent_list() { list_snapshots "$(stamp '3 days ago')" "$(stamp '1 minute ago')"; }
+
+create_preamble() {
+    cat <<'EOF'
+Mounted '/dev/sdb1' at '/run/timeshift/12345/backup'
+------------------------------------------------------------------------------
+Estimating system size...
+Creating new snapshot...(RSYNC)
+Saving to device: /dev/sdb1, mounted at path: /run/timeshift/12345/backup
+Linking from snapshot: 2026-09-21_09-00-01
+Synching files with rsync...
+EOF
+}
+
+saved_ok() {
+    echo "Created control file: /run/timeshift/12345/backup/timeshift/snapshots/$(stamp now)/info.json"
+    echo "RSYNC Snapshot saved successfully (41s)"
+    echo "Tagged snapshot '$(stamp now)': ondemand"
+    echo "------------------------------------------------------------------------------"
+}
+
+gobject_abort() {
+    echo "(timeshift:4242): GLib-GObject-CRITICAL **: 10:00:00.000: g_object_unref: assertion 'G_IS_OBJECT (object)' failed"
+    echo "double free or corruption (!prev)"
+}
+
+do_create() {
+    ls -A "${TMPDIR:-/tmp}" | wc -l > "$FAKE_TIMESHIFT_LOG.tmpcount"
+
+    case "$FAKE_TIMESHIFT_SCENARIO" in
+        success)
+            create_preamble; saved_ok
+            exit 0 ;;
+        generic-fail)
+            echo "E: Failed to mount device '/dev/sdb1' at '/run/timeshift/12345/backup'"
+            exit 1 ;;
+        abort-with-failure-phrase)
+            create_preamble
+            echo "rsync: [receiver] write failed on \"/run/timeshift/12345/backup/...\": Input/output error (5)"
+            echo "EXT4-fs error (device sdb1): Journal has aborted"
+            echo "E: rsync returned an error"
+            echo "E: Failed to create new snapshot"
+            gobject_abort
+            exit 134 ;;
+        abort-recent|abort-old|abort-none)
+            create_preamble; saved_ok; gobject_abort
+            exit 134 ;;
+        segv-saved)
+            create_preamble; saved_ok
+            echo "Maximum backups exceeded for backup level 'ondemand'"
+            echo "Removing snapshot: 2026-09-01_09-00-01"
+            gobject_abort
+            exit 139 ;;
+        segv-not-saved)
+            create_preamble
+            gobject_abort
+            exit 139 ;;
+        segv-saved-and-failure-phrase)
+            create_preamble; saved_ok
+            echo "EXT4-fs error (device sdb1): Journal has aborted"
+            echo "EXT4-fs (sdb1): potential data loss!"
+            gobject_abort
+            exit 139 ;;
+        *)
+            echo "fake timeshift: unknown scenario '$FAKE_TIMESHIFT_SCENARIO'" >&2
+            exit 99 ;;
+    esac
+}
+
+do_list() {
+    case "$FAKE_TIMESHIFT_SCENARIO" in
+        abort-recent|abort-with-failure-phrase|success|segv-saved|segv-saved-and-failure-phrase)
+            recent_list ;;
+        abort-old)
+            old_list ;;
+        *)
+            list_none ;;
+    esac
+    exit 0
+}
+
+if [[ "$*" == "--create --tags D --scripted" ]]; then
+    do_create
+elif [[ "$*" == "--list" ]]; then
+    do_list
+else
+    echo "fake timeshift: unexpected arguments: $*" >&2
+    exit 98
+fi
