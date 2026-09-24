@@ -95,7 +95,10 @@ fi
 
 log_info "User confirmed backup, starting."
 
-DONEFLAG=$(mktemp -u /tmp/timeshift-on-demand-status.XXXXXX)
+# In $XDG_RUNTIME_DIR (0700, this user's only) rather than /tmp, where
+# another local user could create the file at the predicted name first
+# and feed the monitor window a fake result.
+DONEFLAG=$(mktemp -u "${XDG_RUNTIME_DIR:-/tmp}/timeshift-on-demand-status.XXXXXX")
 rm -f "$DONEFLAG"   # mktemp -u shouldn't create it, but be sure
 MONITOR_LAUNCHED=false
 

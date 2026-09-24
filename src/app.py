@@ -364,9 +364,6 @@ class TimeshiftCompanionApp(Gtk.Application):
         # (The polkit action IDs, io.github.11dash11.timeshiftondemand.*,
         # follow polkit's own rules and are unaffected.)
         super().__init__(application_id="io.github._11dash11.timeshiftondemand")
+        # Built on first activation by main.py's "activate" handler, which
+        # also creates the tray icon.
         self.window: TimeshiftCompanionWindow | None = None
-
-    def do_activate(self) -> None:
-        if not self.window:
-            self.window = TimeshiftCompanionWindow(self)
-        self.window.present()
