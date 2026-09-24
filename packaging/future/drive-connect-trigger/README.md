@@ -31,8 +31,7 @@ this, really" rather than accepting a first-pass "sounds fine":
    session's resume-hook testing, the actual backup drive (a WD My
    Passport) was observed failing USB re-enumeration repeatedly during a
    single reconnect attempt (`device number 5` → error → `device number
-   6` → error → eventually `8`/`9` succeeds — see PROJECT.md, ninth
-   round). Whether a *failed* enumeration attempt ever gets far enough
+   6` → error → eventually `8`/`9` succeeds, 2026-08-30). Whether a *failed* enumeration attempt ever gets far enough
    for udev to populate `ID_FS_UUID` before erroring out — which would
    mean this rule could fire multiple times in a burst during one
    troubled reconnect, not once — was never actually tested. Building
@@ -95,5 +94,5 @@ since it isn't installed anywhere.
    timeshift-on-demand-drive-trigger-check <a-real-uuid>`), exactly the
    same efficient debug pattern used to validate the resume-hook, before
    trusting the actual udev-triggered path.
-6. Update `PROJECT.md`, `packaging/README.md`, and the top-level
-   `README.md`'s feature list once it's real.
+6. Update `packaging/README.md` and the top-level `README.md`'s feature
+   list once it's real.

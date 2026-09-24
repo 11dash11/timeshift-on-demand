@@ -112,7 +112,7 @@ that's completely fine as well.
   back.
 - **Tray icon** — Backup Now / Show Window / Quit, so the app can stay
   out of the way between uses.
-- **Login and resume-from-suspend prompts** (optional, install-time) — a
+- **Login and resume-from-suspend prompts** (on by default) — a
   `zenity` Yes/No prompt that, on confirmation, opens the same live
   progress monitor as the Backup tab, independent of whether the main
   window is open.
@@ -136,6 +136,8 @@ All of the above are declared as package dependencies — installing the
 No published release yet. Build and install from source:
 
 ```bash
+git clone https://github.com/11dash11/timeshift-on-demand.git
+cd timeshift-on-demand
 sudo apt build-dep .          # or install debhelper/dpkg-dev manually
 dpkg-buildpackage -us -uc -b
 sudo apt install ../timeshift-on-demand_<version>_all.deb

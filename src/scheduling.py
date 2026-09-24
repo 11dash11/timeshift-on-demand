@@ -9,13 +9,10 @@ Companion's own bundled cron-fix helper
 io.github.11dash11.timeshiftondemand.cronfix polkit action — see packaging/README.md
 for the invocation contract — instead of four separate `sudo` commands.
 
-Deliberately does NOT re-enable timeshift-backup.timer. That unit was
-intentionally removed (see
-projects/script-consolidation/docs/decisions-log.md, item 12: a
-sanity-check script ran for real instead of as a dry run, and the
-deletion was reviewed and kept because on-demand is the actual desired
-mechanism) — resurrecting it would regress a deliberate decision, not
-fix anything. See PROJECT.md, "Maintenance tab — Fix Scheduling".
+Deliberately does NOT re-enable a timeshift-backup.timer systemd unit.
+The author's pre-Companion setup had one; it was removed on purpose,
+because on-demand backups are the intended mechanism, and a "fix" that
+resurrected it would undo that decision rather than fix anything.
 
 REDESIGNED 2026-08-30 after real-world testing on both the Dell and a
 Samsung RF511 exposed a flawed premise: /etc/cron.d/timeshift-hourly
@@ -24,7 +21,7 @@ internal behavior, driven entirely by its own schedule_daily/weekly/
 monthly/hourly/boot config flags in /etc/timeshift/timeshift.json (also
 world-readable, no privilege needed to check). If ANY of those flags is
 true, Timeshift recreates that file every time it runs at all —
-including when Companion's own backup/list helpers invoke it — so
+including when Companion's backup helper invokes it — so
 disabling the file while scheduling is still enabled is a losing,
 pointless fight, not a fix. Confirmed directly: both machines had
 schedule_daily/weekly/monthly = true (Timeshift's own setup-wizard

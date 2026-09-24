@@ -3,14 +3,13 @@
 # timeshift-on-demand-backup-helper — privileged worker invoked via pkexec.
 #
 # Runs a single Timeshift on-demand snapshot creation, then tolerates a
-# known upstream bug (see desktop-troubleshooting/Timeshift/timeshift-crash-session.md):
+# known upstream bug in Timeshift 24.01.1:
 # Timeshift's rsync progress parser can crash with GLib-GObject-CRITICAL /
 # "double free or corruption (!prev)" (exit 134) AFTER the snapshot itself
 # has already completed successfully. Rather than trust the raw exit code
 # in that specific case, check this run's own output for proof the
 # snapshot was saved before deciding pass/fail. Ported in spirit from the
-# reviewed, deployed
-# projects/timeshift-monitor-backup/timeshift-backup-root.sh.
+# author's earlier standalone backup script, which has the same logic.
 #
 # HARDENED 2026-08-30 after a real false-positive caught on the Samsung
 # RF511: a USB bus reset disconnected the backup drive mid-write, aborting
@@ -38,9 +37,9 @@
 # are inherited by the exec'd root child, so this script does not need
 # to set its own priority.
 #
-# Not meant to be run interactively. The caller (Companion's
-# backup_runner.py, once reworked to call this — see PROJECT.md) captures
-# stdout/stderr and the final exit code.
+# Not meant to be run interactively. The callers (src/backup_runner.py
+# and packaging/bin/timeshift-on-demand-prompt) capture stdout/stderr and
+# the final exit code.
 
 set -u
 

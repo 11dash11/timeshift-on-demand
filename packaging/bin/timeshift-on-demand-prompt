@@ -12,16 +12,16 @@
 # (timeshift-on-demand) is open or not — this script never touches it,
 # so there's no single-instance/GApplication concern to worry about here.
 #
-# Ports the previously unpromoted timeshift-ondemand-backup.sh draft's
-# "live monitor window" behavior (see projects/timeshift-monitor-backup/)
-# with two portability fixes: `sudo` -> `pkexec` against Companion's own
+# Ports the "live monitor window" behavior of the author's earlier
+# standalone timeshift-ondemand-backup.sh script, with two portability
+# fixes: `sudo` -> `pkexec` against Companion's own
 # bundled helper, and the hardcoded drive UUID replaced by whatever the
 # user configured in Companion's Settings tab
 # (~/.config/timeshift-on-demand/config.json — see src/config.py).
 #
 # No time-window restriction (the old script's 16:00-17:30
-# scheduled-backup-slot block) — on-demand runs are always allowed, per
-# PROJECT.md. Shares its log file with the GUI's own BackupRunner
+# scheduled-backup-slot block) — on-demand runs are always allowed.
+# Shares its log file with the GUI's own BackupRunner
 # (src/backup_runner.py) so both paths' history lands in one place.
 
 LOGFILE="${XDG_DATA_HOME:-$HOME/.local/share}/timeshift-on-demand/backup.log"

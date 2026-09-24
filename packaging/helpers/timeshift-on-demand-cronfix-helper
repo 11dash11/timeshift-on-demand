@@ -9,12 +9,11 @@
 # privileged action taken in response: rename it back to its disabled
 # form and restart cron so the change takes effect immediately.
 #
-# Deliberately does NOT re-enable any systemd timer. timeshift-backup.timer
-# was intentionally removed (see
-# projects/script-consolidation/docs/decisions-log.md, item 12) and this
-# helper must never resurrect it — that is the one behavior change from
-# the old fix-timeshift-scheduling.sh this replaces. See PROJECT.md,
-# "Maintenance tab — Fix Scheduling" for the decision record.
+# Deliberately does NOT re-enable any systemd timer. The author's
+# pre-Companion setup removed its timeshift-backup.timer on purpose
+# (on-demand is the intended mechanism), and this helper must never
+# resurrect it — the one behavior change from the old
+# fix-timeshift-scheduling.sh script this replaces.
 #
 # Deliberately argument-free, same reasoning as the backup helper. This is
 # the exact program path named in io.github.11dash11.timeshiftondemand.cronfix's
