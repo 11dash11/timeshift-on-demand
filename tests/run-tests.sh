@@ -147,6 +147,18 @@ run_case "8  exit 139, saved successfully AND failure phrase -> stays 139" \
     segv-saved-and-failure-phrase 139 no \
     "Exit 139 but output shows a real failure"
 
+# --- progress filter / log display (python unittest; Gtk cases skip
+# themselves when PyGObject is unavailable) -------------------------------
+
+if python3 "$TESTS_DIR/test_progress.py" >"$WORK/progress.out" 2>&1; then
+    printf 'PASS  progress filter + log display unit tests\n'
+    pass=$((pass + 1))
+else
+    printf 'FAIL  progress filter + log display unit tests\n'
+    sed 's/^/        | /' "$WORK/progress.out"
+    fail=$((fail + 1))
+fi
+
 echo
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

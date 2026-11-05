@@ -39,6 +39,18 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
+# Shared parsing (progress_filter, no GTK) and rendering (log_display)
+# modules: installed to /usr/share/timeshift-on-demand/, or ../../src when
+# run from a checkout. The installed copy wins, so test a checkout on a
+# machine without the package, or test the .deb itself.
+for _d in ("/usr/share/timeshift-on-demand",
+           os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src")):
+    if os.path.isfile(os.path.join(_d, "progress_filter.py")):
+        sys.path.insert(0, _d)
+        break
+from log_display import LogDisplay  # noqa: E402
+from progress_filter import PROGRESS, ProgressFilter  # noqa: E402
+
 POLL_INTERVAL_MS = 500
 WARN_AT_S = 1200  # 20 minutes before the first "this may be stuck" notice
 WARN_INTERVAL_S = 300  # repeat every 5 minutes after that
@@ -66,6 +78,8 @@ class MonitorWindow(Gtk.Window):
         self.text_view.set_monospace(True)
         self.buffer = self.text_view.get_buffer()
         scroller.add(self.text_view)
+        self.display = LogDisplay(self.buffer, scroller)
+        self.filter = ProgressFilter()
         box.pack_start(scroller, True, True, 0)
 
         self.close_btn = Gtk.Button(label="Close")
@@ -78,8 +92,10 @@ class MonitorWindow(Gtk.Window):
         # Only stream NEW lines from this point onward, matching the old
         # `tail -f -n 0` behavior — seek to end of file first.
         self._log_pos = 0
+        self._log_ino = None
         try:
-            self._log_pos = os.path.getsize(logfile)
+            st = os.stat(logfile)
+            self._log_pos, self._log_ino = st.st_size, st.st_ino
         except OSError:
             pass
 
@@ -90,21 +106,47 @@ class MonitorWindow(Gtk.Window):
         GLib.timeout_add(POLL_INTERVAL_MS, self._tick)
 
     def _append(self, text: str) -> None:
-        end_iter = self.buffer.get_end_iter()
-        self.buffer.insert(end_iter, text)
-        mark = self.buffer.get_insert()
-        self.text_view.scroll_to_mark(mark, 0.0, False, 0.0, 0.0)
+        """Add a notice as normal lines (ends any live progress line)."""
+        for line in text.strip("\n").split("\n"):
+            self.display.add_line(line)
 
     def _poll_new_log_lines(self) -> None:
+        # Binary read: text mode would turn Timeshift's \r progress
+        # updates into \n before the display code could see them.
         try:
-            with open(self.logfile, "r", encoding="utf-8", errors="replace") as f:
+            st = os.stat(self.logfile)
+            if st.st_size < self._log_pos or (
+                self._log_ino is not None and st.st_ino != self._log_ino
+            ):
+                # The log was trimmed/replaced (it is cut to its last 256 KiB
+                # once past 1 MiB). Old offsets mean nothing now; continue
+                # from the end rather than replaying old history.
+                self._log_pos = st.st_size
+                self.filter.reset()
+                self._log_ino = st.st_ino
+                self._append(
+                    "[log file was replaced; some output from this run may be "
+                    f"missing - the result below is still accurate. Full log: {self.logfile}]"
+                )
+                return
+            self._log_ino = st.st_ino
+            with open(self.logfile, "rb") as f:
                 f.seek(self._log_pos)
-                new_data = f.read()
-                self._log_pos = f.tell()
+                data = f.read()
+                self._log_pos += len(data)
         except OSError:
             return
-        if new_data:
-            self._append(new_data)
+        if data:
+            self._show(self.filter.feed(data))
+
+    def _show(self, events) -> None:
+        self.display.apply(events)
+        if not self._done:
+            for ev in reversed(events):
+                if ev.kind == PROGRESS:
+                    rem = f" ({ev.remaining} remaining)" if ev.remaining else ""
+                    self.status_label.set_text(f"Backup running... {min(ev.percent, 100):g}%{rem}")
+                    break
 
     def _tick(self) -> bool:
         if self._done:
@@ -139,6 +181,7 @@ class MonitorWindow(Gtk.Window):
             pass
 
         self._poll_new_log_lines()  # catch any final lines written just before doneflag appeared
+        self._show(self.filter.finish())  # flush any held-back fragment
 
         if status_code == "0":
             self.status_label.set_text("RESULT: SUCCESS")

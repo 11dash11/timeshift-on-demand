@@ -8,7 +8,7 @@ installing, see [docs/installation.md](../docs/installation.md).
 
 | Source | Installed to | What it is |
 |---|---|---|
-| `src/*.py` | `/usr/share/timeshift-on-demand/` | The GTK app (unprivileged) |
+| `src/*.py` | `/usr/share/timeshift-on-demand/` | The GTK app (unprivileged); `progress_filter.py` and `log_display.py` are also imported by the progress window below |
 | `bin/timeshift-on-demand` | `/usr/bin/` | Launcher for the GTK app |
 | `bin/timeshift-on-demand-prompt` | `/usr/bin/` | Login/resume Yes/No prompt + backup run |
 | `bin/timeshift-on-demand-gui-monitor` | `/usr/lib/timeshift-on-demand/` | Live progress window used by the prompt |
