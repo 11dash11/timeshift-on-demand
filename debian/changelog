@@ -1,3 +1,24 @@
+timeshift-on-demand (0.1.0~dev18) UNRELEASED; urgency=low
+
+  * Backup monitor window and Backup tab: Timeshift's progress updates
+    (thousands of "NN% complete" fragments per run) now replace one line
+    in place, like the old terminal monitor, instead of each becoming its
+    own line (a real log went from 16,160 display lines to about 1,620).
+    The monitor now reads the log in binary, because Python's text mode
+    turns Timeshift's carriage returns into newlines before they can be
+    seen. Only progress lines are replaced; error and other lines are
+    never overwritten. The status label shows the percentage and time
+    remaining while running.
+  * The monitor handles the log being trimmed mid-run (continues from the
+    new end instead of freezing) and no longer shows blank lines for
+    Timeshift's line-erase fragments.
+  * Both log views now follow new output only while scrolled to the
+    bottom, and no longer jump back to wherever the mouse last clicked.
+  * New shared modules progress_filter.py (no GTK) and log_display.py,
+    with unit tests in tests/test_progress.py (run by tests/run-tests.sh).
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 05 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev17) UNRELEASED; urgency=low
 
   * logrotate: added `su root root` to the resume-hook log's stanza.

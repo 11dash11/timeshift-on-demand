@@ -2,7 +2,7 @@ Source: timeshift-on-demand
 Section: admin
 Priority: optional
 Maintainer: JShin <11dash11@users.noreply.github.com>
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13), python3
 Standards-Version: 4.6.2
 Homepage: https://github.com/11dash11/timeshift-on-demand
 Vcs-Git: https://github.com/11dash11/timeshift-on-demand.git

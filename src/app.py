@@ -27,6 +27,8 @@ import config  # noqa: E402
 import scheduling  # noqa: E402
 import status  # noqa: E402
 from backup_runner import BackupRunner  # noqa: E402
+from log_display import LogDisplay  # noqa: E402
+from progress_filter import classify  # noqa: E402
 
 LOG_POLL_INTERVAL_MS = 500
 STATUS_REFRESH_INTERVAL_MS = 30_000
@@ -192,6 +194,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.log_view.set_monospace(True)
         self.log_buffer = self.log_view.get_buffer()
         scroller.add(self.log_view)
+        self.log_display = LogDisplay(self.log_buffer, scroller)
         box.pack_start(scroller, True, True, 0)
 
         return box
@@ -230,12 +233,10 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         return False  # one-shot idle call
 
     def _on_log_poll_tick(self) -> bool:
-        for line in self.runner.poll_log_lines():
-            end_iter = self.log_buffer.get_end_iter()
-            self.log_buffer.insert(end_iter, line + "\n")
-        # Auto-scroll to the bottom
-        mark = self.log_buffer.get_insert()
-        self.log_view.scroll_to_mark(mark, 0.0, False, 0.0, 0.0)
+        # Progress lines replace each other in place; everything else is
+        # appended. Scrolling follows new output only while the user is at
+        # the bottom (see log_display.py).
+        self.log_display.apply([classify(line) for line in self.runner.poll_log_lines()])
         return True
 
     # ------------------------------------------------------------------

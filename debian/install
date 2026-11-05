@@ -7,6 +7,8 @@ src/main.py usr/share/timeshift-on-demand/
 src/app.py usr/share/timeshift-on-demand/
 src/backup_runner.py usr/share/timeshift-on-demand/
 src/config.py usr/share/timeshift-on-demand/
+src/log_display.py usr/share/timeshift-on-demand/
+src/progress_filter.py usr/share/timeshift-on-demand/
 src/scheduling.py usr/share/timeshift-on-demand/
 src/status.py usr/share/timeshift-on-demand/
 src/tray.py usr/share/timeshift-on-demand/
