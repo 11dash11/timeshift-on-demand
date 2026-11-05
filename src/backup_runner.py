@@ -28,7 +28,9 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
+
+from progress_filter import PROGRESS, classify
 
 
 def _data_dir() -> Path:
@@ -101,12 +103,44 @@ class BackupRunner:
         self.is_running = False
         self.result: Optional[BackupResult] = None
 
-    def _log(self, msg: str) -> None:
+    def _log(self, msg: str, persist: bool = True) -> str:
+        """Queue a line for the Backup tab and (unless persist=False)
+        append it to backup.log. Returns the timestamped line."""
         line = f"{datetime.now().strftime('%H:%M:%S')}  {msg}"
         self._log_queue.put(line)
+        if persist:
+            self._write_file(line)
+        return line
+
+    @staticmethod
+    def _write_file(line: str) -> None:
         LOGFILE.parent.mkdir(parents=True, exist_ok=True)
         with open(LOGFILE, "a", encoding="utf-8") as f:
             f.write(line + "\n")
+
+    def _stream_output(self, lines: Iterable[str]) -> None:
+        """Log the helper's output. Progress updates ("NN% complete")
+        go to the Backup tab live but are NOT each written to backup.log:
+        only the newest one is kept, written when a normal line follows
+        it or the stream ends, so the log still shows how far a run got
+        without thousands of near-identical lines. Normal lines (errors
+        included) are always written, in order."""
+        pending: Optional[str] = None
+        try:
+            for raw in lines:
+                text = raw.strip()
+                if not text:
+                    continue
+                if classify(text).kind == PROGRESS:
+                    pending = self._log(text, persist=False)
+                    continue
+                if pending is not None:
+                    self._write_file(pending)
+                    pending = None
+                self._log(text)
+        finally:
+            if pending is not None:
+                self._write_file(pending)
 
     def poll_log_lines(self) -> list[str]:
         """Non-blocking drain of any new log lines. Safe to call from the GUI loop."""
@@ -223,9 +257,7 @@ class BackupRunner:
                 encoding="utf-8",
                 errors="replace",
             ) as proc:
-                for line in proc.stdout:
-                    if line.strip():
-                        self._log(line.strip())
+                self._stream_output(proc.stdout)
             exit_code = proc.returncode
         except OSError as exc:
             self._log(f"Could not launch pkexec: {exc}")

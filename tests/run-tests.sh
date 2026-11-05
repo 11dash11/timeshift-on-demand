@@ -150,14 +150,16 @@ run_case "8  exit 139, saved successfully AND failure phrase -> stays 139" \
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 
-if python3 "$TESTS_DIR/test_progress.py" >"$WORK/progress.out" 2>&1; then
-    printf 'PASS  progress filter + log display unit tests\n'
-    pass=$((pass + 1))
-else
-    printf 'FAIL  progress filter + log display unit tests\n'
-    sed 's/^/        | /' "$WORK/progress.out"
-    fail=$((fail + 1))
-fi
+for t in test_progress test_backup_runner; do
+    if python3 "$TESTS_DIR/$t.py" >"$WORK/$t.out" 2>&1; then
+        printf 'PASS  unit tests: %s\n' "$t"
+        pass=$((pass + 1))
+    else
+        printf 'FAIL  unit tests: %s\n' "$t"
+        sed 's/^/        | /' "$WORK/$t.out"
+        fail=$((fail + 1))
+    fi
+done
 
 echo
 echo "$pass passed, $fail failed"
