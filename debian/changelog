@@ -1,3 +1,15 @@
+timeshift-on-demand (0.1.0~dev19) UNRELEASED; urgency=low
+
+  * Backup tab runs no longer write every "NN% complete" update to
+    backup.log as its own timestamped line. The tab still shows each
+    update live; the file gets only the newest one, written when a normal
+    line follows or the run ends, so a failed run still shows how far it
+    got. All other lines, errors included, are written in order. (The
+    login/resume prompt path is unchanged: it still redirects the
+    helper's raw output into the log.)
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 05 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev18) UNRELEASED; urgency=low
 
   * Backup monitor window and Backup tab: Timeshift's progress updates
