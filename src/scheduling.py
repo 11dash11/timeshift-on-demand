@@ -51,7 +51,9 @@ def _timeshift_schedule_enabled() -> Optional[bool]:
     """
     try:
         data = json.loads(TIMESHIFT_CONFIG.read_text(encoding="utf-8"))
-    except (FileNotFoundError, PermissionError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
         return None
     return any(str(data.get(key, "false")).lower() == "true" for key in SCHEDULE_KEYS)
 

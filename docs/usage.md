@@ -78,6 +78,11 @@ device** — see
 [troubleshooting.md](troubleshooting.md#timeshift-is-configured-to-back-up-to-a-different-device)
 for why both need to match.
 
+The two checkboxes below the drive picker turn the
+[login and resume prompts](#auto-prompts-login-and-resume) on or off
+separately. Both start on, and a change applies from the next login or
+resume.
+
 ## Maintenance tab
 
 Checks whether a `/etc/cron.d/timeshift-hourly` file exists, and explains
@@ -104,7 +109,7 @@ ones do, with the right extension), Companion runs a tray icon with:
 ## Auto-prompts (login and resume)
 
 Independent of the main window entirely — these fire even if Companion
-was never manually opened:
+was never manually opened (unless turned off in the Settings tab):
 
 1. A `zenity` Yes/No dialog: *"Do you want to start the on-demand
    Timeshift backup now?"*

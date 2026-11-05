@@ -139,7 +139,7 @@ for session_id in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print
     systemd-run --user --machine="$user@.host" --collect \
         --unit="timeshift-on-demand-resume-$session_id-$(date +%s)" \
         "${env_args[@]}" \
-        -- timeshift-on-demand-prompt \
+        -- timeshift-on-demand-prompt --resume \
         >>/var/log/timeshift-on-demand-resume-hook.log 2>&1
 done
 

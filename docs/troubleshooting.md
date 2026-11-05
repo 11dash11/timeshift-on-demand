@@ -123,7 +123,9 @@ Common reasons, in order of likelihood:
    prompt only appears once the drive-wait succeeds.
 2. **No drive is configured yet** — check `backup.log` for "No backup
    drive configured."
-3. **(Resume prompt only) Session detection genuinely can't reach your
+3. **That prompt is turned off** in the Settings tab — check `backup.log`
+   for "prompt_on_login is off" or "prompt_on_resume is off".
+4. **(Resume prompt only) Session detection genuinely can't reach your
    desktop.** This is the most environment-fragile part of the whole
    project — reaching a real graphical session from a root, session-less
    hook context doesn't have one universally guaranteed API. If the

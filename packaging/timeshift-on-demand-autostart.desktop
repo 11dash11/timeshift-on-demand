@@ -2,7 +2,7 @@
 Type=Application
 Name=Timeshift On Demand — Backup Prompt
 Comment=Asks whether to run an on-demand Timeshift backup at login
-Exec=timeshift-on-demand-prompt
+Exec=timeshift-on-demand-prompt --login
 Icon=timeshift
 Terminal=false
 NoDisplay=true
