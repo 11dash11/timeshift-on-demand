@@ -1,7 +1,7 @@
 # Packaging and helper contracts
 
 How the pieces in `packaging/` fit together, and the contracts between
-the unprivileged app/scripts and the two root helpers. For building and
+the unprivileged app/scripts and the root helper. For building and
 installing, see [docs/installation.md](../docs/installation.md).
 
 ## What gets installed where
@@ -13,8 +13,7 @@ installing, see [docs/installation.md](../docs/installation.md).
 | `bin/timeshift-on-demand-prompt` | `/usr/bin/` | Login/resume Yes/No prompt + backup run |
 | `bin/timeshift-on-demand-gui-monitor` | `/usr/lib/timeshift-on-demand/` | Live progress window used by the prompt |
 | `helpers/timeshift-on-demand-backup-helper` | `/usr/lib/timeshift-on-demand/` | Root helper: create a snapshot |
-| `helpers/timeshift-on-demand-cronfix-helper` | `/usr/lib/timeshift-on-demand/` | Root helper: disable a reappeared cron file |
-| `polkit/io.github.11dash11.timeshiftondemand.policy` | `/usr/share/polkit-1/actions/` | The two polkit actions |
+| `polkit/io.github.11dash11.timeshiftondemand.policy` | `/usr/share/polkit-1/actions/` | The one polkit action |
 | `io.github._11dash11.timeshiftondemand.desktop` | `/usr/share/applications/` | App launcher |
 | `timeshift-on-demand-autostart.desktop` | `/etc/xdg/autostart/` | Runs the prompt at login |
 | `systemd-sleep/timeshift-on-demand-resume-hook` | `/usr/lib/systemd/system-sleep/` | Runs the prompt after resume |
@@ -53,19 +52,6 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
 - **Caller's job, not the helper's:** waiting for the drive to mount,
   checking that Companion's and Timeshift's configured drives match, and
   any `ionice`/`nice` (wrap the `pkexec` call itself).
-
-### Cron fix — `io.github.11dash11.timeshiftondemand.cronfix`
-
-```
-pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper
-```
-
-- If `/etc/cron.d/timeshift-hourly` exists, renames it to
-  `timeshift-hourly.disabled` and restarts cron; otherwise does nothing.
-  Never re-enables any systemd timer.
-- `src/scheduling.py` refuses to call it while any of Timeshift's own
-  schedule levels is on, since Timeshift would just recreate the file.
-  The integrity check itself is unprivileged.
 
 ### Snapshot list — no privileged action
 

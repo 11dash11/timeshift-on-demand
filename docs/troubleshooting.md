@@ -77,17 +77,14 @@ expected versus what Timeshift is configured for.
 match, or update Companion's Settings tab to match Timeshift's — either
 direction works, they just both need to agree.
 
-## Maintenance tab's "Fix Scheduling" button does nothing / says "not applied"
+## Maintenance tab says a cron file exists
 
-Check what the Maintenance tab's check message actually says first. If
-it says Timeshift's own Schedule settings have something enabled, this
-is intentional — see
-[usage.md's Maintenance tab section](usage.md#maintenance-tab). The fix
-refuses to disable a cron file that Timeshift's own scheduler would just
-recreate on its next run. If you genuinely want on-demand-only backups,
-the actual fix is in Timeshift itself: **Timeshift → Settings → Schedule
-→ untick everything.** Companion recognizes and respects that setting
-rather than fighting it either way.
+Check what the message actually says. If Timeshift's own Schedule
+settings have something enabled, this is expected — see
+[usage.md's Maintenance tab section](usage.md#maintenance-tab). If you
+genuinely want on-demand-only backups, the fix is in Timeshift itself:
+**Timeshift → Settings → Schedule → untick everything.** Companion only
+explains this file and doesn't change it.
 
 ## On-demand snapshots keep piling up
 

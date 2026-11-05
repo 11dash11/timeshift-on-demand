@@ -80,33 +80,15 @@ for why both need to match.
 
 ## Maintenance tab
 
-![Maintenance tab](images/maintenance.png)
-
-Checks whether a legacy `/etc/cron.d/timeshift-hourly` file has
-reappeared, and explains why:
+Checks whether a `/etc/cron.d/timeshift-hourly` file exists, and explains
+why. This tab is read-only and changes nothing:
 
 - **If Timeshift's own Schedule settings have anything enabled**
-  (Daily/Weekly/Monthly/Hourly/Boot), the message above is what you'll
-  see — the cron file existing is expected, not a bug, and the fix
-  button deliberately refuses to run (it would just get undone the next
-  time Timeshift's own scheduler runs).
+  (Daily/Weekly/Monthly/Hourly/Boot), the cron file existing is expected,
+  not a bug.
 - **If Timeshift's scheduling is entirely off** and the file still
-  exists, that *is* a genuine anomaly — the check reports it as such,
-  and "Fix Scheduling" actually disables the reappeared file in that
-  case.
-
-The **Fix Scheduling** button itself doesn't visually change between
-these two cases — it stays clickable either way. In the first case
-(shown above), clicking it is harmless but does nothing; read the
-check message above the button to know which case you're in before
-expecting it to act. See
-[troubleshooting.md](troubleshooting.md#maintenance-tabs-fix-scheduling-button-does-nothing--says-not-applied)
-if the button not visibly reacting had you thinking something was
-broken.
-
-Companion is designed to work correctly whether or not you use
-Timeshift's own scheduling alongside it — this tab is what makes that
-distinction instead of blindly fighting anything it finds.
+  exists, the check says so. Timeshift manages this file itself, so any
+  change belongs in Timeshift's own Settings → Schedule.
 
 ## Tray icon
 
@@ -142,17 +124,16 @@ if you expected it to show and it didn't.
 ## Understanding privilege prompts
 
 You'll be asked to authenticate (password/fingerprint, via `polkit`) for
-two specific things, each separately and narrowly scoped — Companion
-itself never runs as root:
+one specific, narrowly scoped thing — Companion itself never runs as
+root:
 
 | When | What | How often |
 |---|---|---|
 | Clicking "Backup Now" / auto-prompt confirm | Creating the actual snapshot | Every time |
-| Clicking "Fix Scheduling" | Disabling a reappeared legacy cron file | Every time |
 
 Opening the app and viewing the Dashboard never asks for a password.
 
 This is deliberate — Companion depends on `polkit` for authorization
-rather than a standing passwordless grant, so every privileged action
+rather than a standing passwordless grant, so every backup
 genuinely requires you to say yes each time. See the top-level `README.md`'s
 "Privilege model" section for the full reasoning.
