@@ -85,6 +85,8 @@ resume.
 
 ## Maintenance tab
 
+![Maintenance tab](images/maintenance.png)
+
 Checks whether a `/etc/cron.d/timeshift-hourly` file exists, and explains
 why. This tab is read-only and changes nothing:
 
