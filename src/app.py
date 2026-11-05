@@ -269,7 +269,34 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self._drive_uuids_by_index: list[str] = []
         self._populate_drive_combo()
 
+        box.pack_start(Gtk.Separator(), False, False, 6)
+        box.pack_start(
+            Gtk.Label(label="Ask whether to back up (when the backup drive is connected):", xalign=0),
+            False, False, 0,
+        )
+        settings = config.load_settings()
+        for label, key, active in (
+            ("At login", "prompt_on_login", settings.prompt_on_login),
+            ("After resuming from suspend", "prompt_on_resume", settings.prompt_on_resume),
+        ):
+            check = Gtk.CheckButton(label=label)
+            check.set_active(active)
+            # Connected after set_active, so building the tab saves nothing.
+            check.connect("toggled", self._on_prompt_toggled, key)
+            box.pack_start(check, False, False, 0)
+
+        self.prompt_status_label = Gtk.Label(label="", xalign=0)
+        self.prompt_status_label.set_line_wrap(True)
+        box.pack_start(self.prompt_status_label, False, False, 0)
+
         return box
+
+    def _on_prompt_toggled(self, check: Gtk.CheckButton, key: str) -> None:
+        try:
+            config.update_settings(**{key: check.get_active()})
+            self.prompt_status_label.set_text("")
+        except OSError as exc:
+            self.prompt_status_label.set_text(f"Couldn't save this setting: {exc}")
 
     def _populate_drive_combo(self) -> None:
         self.drive_combo.remove_all()
@@ -299,13 +326,13 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             self.settings_status_label.set_text("Pick a drive from the list first.")
             return
         uuid = self._drive_uuids_by_index[idx]
-        config.save_settings(config.Settings(backup_drive_uuid=uuid))
+        config.update_settings(backup_drive_uuid=uuid)
         self.runner.drive_uuid = uuid
         self.settings_status_label.set_text(f"Saved. Backup drive set to: {uuid}")
         self._refresh_drive_status()
 
     def _on_clear_drive_clicked(self, *_args) -> None:
-        config.save_settings(config.Settings(backup_drive_uuid=None))
+        config.update_settings(backup_drive_uuid=None)
         self.runner.drive_uuid = None
         self.settings_status_label.set_text("Cleared — no backup drive configured.")
         self._refresh_drive_status()

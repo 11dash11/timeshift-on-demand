@@ -3,6 +3,7 @@
 timeshift-on-demand-prompt \- zenity-confirmed on-demand Timeshift backup, headless
 .SH SYNOPSIS
 .B timeshift-on-demand-prompt
+.RB [ \-\-login | \-\-resume ]
 .SH DESCRIPTION
 Reads the backup drive configured via the
 .BR timeshift-on-demand (1)
@@ -18,10 +19,17 @@ from suspend (via a systemd-logind sleep hook), independent of whether
 the main
 .BR timeshift-on-demand (1)
 window is open.
+.SH OPTIONS
+.TP
+.B \-\-login
+Exit without prompting if the login prompt is turned off in the Settings tab.
+.TP
+.B \-\-resume
+Exit without prompting if the resume prompt is turned off in the Settings tab.
 .SH FILES
 .TP
 .I ~/.config/timeshift-on-demand/config.json
-Read for the configured backup drive UUID.
+Read for the configured backup drive UUID and the prompt settings.
 .TP
 .I ~/.local/share/timeshift-on-demand/backup.log
 Backup run history, shared with the GUI app.

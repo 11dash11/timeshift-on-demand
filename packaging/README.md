@@ -63,7 +63,11 @@ Timeshift makes those world-readable. A third action that ran
 ## Auto-prompts (login and resume)
 
 Both run `timeshift-on-demand-prompt` as the logged-in user, independent
-of whether the GTK app is running. The script reads the drive UUID from
+of whether the GTK app is running. The autostart entry passes `--login`
+and the resume hook passes `--resume`; the script exits straight away if
+`prompt_on_login` or `prompt_on_resume` is `false` in `config.json` (the
+Settings tab's checkboxes). With no flag it always prompts. It reads the
+drive UUID from
 `~/.config/timeshift-on-demand/config.json`, waits up to 180 s for that
 drive to mount, asks with `zenity`, then opens the progress window and
 runs `ionice -c2 -n7 nice -n10 pkexec <backup-helper>`, the same helper

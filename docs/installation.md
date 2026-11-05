@@ -105,21 +105,8 @@ Both are entirely independent of whether the Companion window or tray
 icon is open — see [usage.md](usage.md#auto-prompts-login-and-resume)
 for how they work.
 
-**Turning them off.** There's no setting for this yet. For the **login
-prompt**, the standard per-user override works on any desktop (the
-entry is hidden from most "Startup Applications" screens, so it may not
-be listed there):
-
-```bash
-mkdir -p ~/.config/autostart
-printf '[Desktop Entry]\nType=Application\nName=Timeshift On Demand — Backup Prompt\nExec=timeshift-on-demand-prompt\nHidden=true\n' \
-  > ~/.config/autostart/timeshift-on-demand-autostart.desktop
-```
-
-Delete that file to turn it back on. The **resume prompt** has no
-per-user switch. Clearing the drive in Companion's Settings tab silences
-both prompts (each exits quietly when no drive is configured), but it
-also stops Backup Now from running.
+**Turning them off.** Companion's Settings tab has a checkbox for each
+prompt. The change applies from the next login or resume.
 
 ## Verifying the install
 

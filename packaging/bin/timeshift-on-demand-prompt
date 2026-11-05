@@ -12,6 +12,10 @@
 # (timeshift-on-demand) is open or not — this script never touches it,
 # so there's no single-instance/GApplication concern to worry about here.
 #
+# The autostart entry passes --login and the resume hook passes --resume,
+# so each can be turned off separately in the Settings tab. With neither
+# flag it always prompts.
+#
 # Ports the "live monitor window" behavior of the author's earlier
 # standalone timeshift-ondemand-backup.sh script, with two portability
 # fixes: `sudo` -> `pkexec` against Companion's own
@@ -46,6 +50,29 @@ log_info() { log "INFO" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
 log_info "Prompt script started"
+
+# Before the drive wait below, so a prompt that's off does nothing else.
+# Only an explicit JSON false turns one off, same as src/config.py: a
+# missing or broken config leaves the prompt on.
+case "${1:-}" in
+    --login) PROMPT_KEY=prompt_on_login ;;
+    --resume) PROMPT_KEY=prompt_on_resume ;;
+    *) PROMPT_KEY="" ;;
+esac
+if [[ -n "$PROMPT_KEY" ]]; then
+    PROMPT_ENABLED=$(python3 -c "
+import json, sys
+try:
+    with open(sys.argv[1], encoding='utf-8') as f:
+        print('off' if json.load(f).get(sys.argv[2]) is False else 'on')
+except Exception:
+    print('on')
+" "$CONFIG_FILE" "$PROMPT_KEY" 2>/dev/null)
+    if [[ "$PROMPT_ENABLED" == "off" ]]; then
+        log_info "$PROMPT_KEY is off in the Settings tab — exiting, nothing done."
+        exit 0
+    fi
+fi
 
 DRIVE_UUID=$(python3 -c "
 import json, sys

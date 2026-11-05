@@ -1,3 +1,16 @@
+timeshift-on-demand (0.1.0~dev21) UNRELEASED; urgency=low
+
+  * Settings tab: checkboxes to turn the login prompt and the resume prompt
+    on or off separately (prompt_on_login and prompt_on_resume in
+    config.json). Both default to on, and a missing or broken config
+    leaves them on. A prompt that's off exits before waiting for the drive
+    and notes it in backup.log.
+  * Saving or clearing the backup drive now keeps the other settings.
+  * The Maintenance check no longer throws if timeshift.json isn't a JSON
+    object or can't be read as a file; it says it can't tell instead.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 05 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev20) UNRELEASED; urgency=low
 
   * Retired the Maintenance tab's "Fix Scheduling" action, its root helper

@@ -44,7 +44,7 @@ class CheckTests(unittest.TestCase):
         self.assertIn("levels are all off", r.detail)
 
     def test_unreadable_config_does_not_claim_schedule_is_off(self):
-        for config in (None, "{not json"):
+        for config in (None, "{not json", "[]"):
             with self.subTest(config=config):
                 scheduling.TIMESHIFT_CONFIG.unlink(missing_ok=True)
                 r = self.state(True, config)
