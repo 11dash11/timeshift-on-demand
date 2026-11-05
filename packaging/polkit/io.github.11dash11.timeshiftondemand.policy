@@ -5,7 +5,7 @@
 <!--
   Modeled on Timeshift's own policy file
   (/usr/share/polkit-1/actions/in.teejeetech.pkexec.timeshift.policy),
-  but scoped to Companion's two specific helper scripts instead of the
+  but scoped to Companion's one backup helper script instead of the
   whole timeshift-gtk process (see README.md, "Privilege model").
 
   io.github.11dash11.timeshiftondemand.* is the project's real reverse-DNS
@@ -13,8 +13,8 @@
   the standard freedesktop/Flatpak convention for a project with no owned
   domain). Replaced an earlier org.timeshiftondemand.app.* placeholder.
 
-  No org.freedesktop.policykit.exec.allow_gui on any action: none of the
-  helpers needs a display. Keeping DISPLAY/XAUTHORITY in the root
+  No org.freedesktop.policykit.exec.allow_gui: the helper doesn't need a
+  display. Keeping DISPLAY/XAUTHORITY in the root
   environment is also the likely way timeshift's D-Bus fallback managed
   to autolaunch the root dbus-launch/dbus-daemon pair behind the
   2026-09-19 resume-hook wedge (see the resume hook's header, item 4):
@@ -38,19 +38,10 @@
     <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper</annotate>
   </action>
 
-  <action id="io.github.11dash11.timeshiftondemand.cronfix">
-    <message gettext-domain="timeshift-on-demand">Authentication is required to disable a reappeared legacy Timeshift cron file</message>
-    <description>Run the Timeshift On Demand cron-integrity fix helper as Administrator</description>
-    <icon_name>timeshift</icon_name>
-    <defaults>
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_admin</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/timeshift-on-demand/timeshift-on-demand-cronfix-helper</annotate>
-  </action>
+  <!-- There used to be a .cronfix action too, removed in 0.1.0~dev20: it
+       renamed a cron file that Timeshift manages itself (src/scheduling.py). -->
 
-  <!-- There used to be a third action, .list (auth_admin_keep), running
+  <!-- There used to be a .list action as well (auth_admin_keep), running
        Timeshift's list command for the Dashboard. Removed in 0.1.0~dev14: the
        Dashboard now reads Timeshift's world-readable snapshot folders
        directly (src/status.py, get_snapshots()), with no privilege. -->

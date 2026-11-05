@@ -1,3 +1,16 @@
+timeshift-on-demand (0.1.0~dev20) UNRELEASED; urgency=low
+
+  * Retired the Maintenance tab's "Fix Scheduling" action, its root helper
+    and its polkit action, leaving creating a snapshot as the only
+    privileged action. The cron file belongs to Timeshift, and any change
+    to it belongs in Timeshift's own Schedule tab.
+  * The Maintenance check is now a read-only explanation, with tests. It
+    no longer compares a hash of the old disabled cron file, which could
+    raise a false alarm, and no longer says scheduling is off when
+    Timeshift's settings can't be read.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 05 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev19) UNRELEASED; urgency=low
 
   * Backup tab runs no longer write every "NN% complete" update to

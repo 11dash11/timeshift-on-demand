@@ -11,7 +11,7 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev19`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev20`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
@@ -53,10 +53,9 @@ Two smaller reasons on top of that:
 
 - **A narrower privilege model.** Timeshift's own GUI re-execs its
   entire process as root via `pkexec` at launch. Companion's own
-  process never runs as root — it asks for two separate, narrowly
-  scoped, single-purpose privileged actions instead (see
-  [Privilege model](#privilege-model) below), each authorized on its
-  own.
+  process never runs as root — it asks for one narrowly scoped,
+  single-purpose privileged action instead (see
+  [Privilege model](#privilege-model) below), authorized each time.
 - **Surfacing a real Timeshift quirk.** The Maintenance tab explains
   (rather than leaves you to puzzle over) a legacy cron file that can
   reappear depending on Timeshift's own scheduling state — see
@@ -107,9 +106,8 @@ that's completely fine as well.
 - **Maintenance** — checks whether a legacy `/etc/cron.d/timeshift-hourly`
   file has reappeared, and explains *why*: if any of Timeshift's own
   Schedule levels (Daily/Weekly/Monthly/Hourly/Boot) are enabled, that
-  file existing is expected Timeshift behavior, not a bug, and the fix
-  action refuses to run rather than fight something that would just come
-  back.
+  file existing is expected Timeshift behavior, not a bug. This is
+  read-only: any change belongs in Timeshift's own Schedule tab.
 - **Tray icon** — Backup Now / Show Window / Quit, so the app can stay
   out of the way between uses.
 - **Login and resume-from-suspend prompts** (on by default) — a
@@ -152,14 +150,12 @@ screenshots.
 
 Companion itself never runs as root — unlike Timeshift's own GUI, which
 re-execs its entire process as root via `pkexec` at launch. Instead,
-exactly two narrow, argument-free actions are individually authorized
-via `polkit`, each resolving to one bundled helper script that does
-exactly one thing:
+exactly one narrow, argument-free action is authorized via `polkit`,
+resolving to one bundled helper script that does exactly one thing:
 
 | Action | Does |
 |---|---|
 | `io.github.11dash11.timeshiftondemand.backup` | Runs `timeshift --create`, with the crash-tolerance workaround for a known upstream progress-parser bug. Like any Timeshift run, this can also delete old snapshots under Timeshift's own retention settings. |
-| `io.github.11dash11.timeshiftondemand.cronfix` | Disables a reappeared legacy cron file (only when Timeshift's own scheduling is actually off) |
 
 The Dashboard's snapshot count needs no privilege at all: it reads
 Timeshift's snapshot folders on the mounted backup drive directly, which

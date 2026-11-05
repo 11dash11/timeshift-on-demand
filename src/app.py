@@ -3,7 +3,7 @@ app.py — GTK3 main window: Dashboard / Backup / Settings / Maintenance tabs.
 
 Consolidates what used to be three separate surfaces (zenity dialog +
 spawned terminal monitor, timeshift-status.sh output, and the cron
-check/fix scripts) into one window. No time-window restriction — the
+check script) into one window. No time-window restriction — the
 Backup tab's trigger button is always enabled.
 
 The backup drive is no longer a hardcoded UUID (that assumed this one
@@ -325,29 +325,11 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         check_btn.connect("clicked", self._on_check_scheduling_clicked)
         box.pack_start(check_btn, False, False, 0)
 
-        fix_btn = Gtk.Button(label="Fix Scheduling (disables a reappeared legacy cron file)")
-        fix_btn.connect("clicked", self._on_fix_scheduling_clicked)
-        box.pack_start(fix_btn, False, False, 0)
-
-        self.fix_result_label = Gtk.Label(label="", xalign=0)
-        self.fix_result_label.set_line_wrap(True)
-        box.pack_start(self.fix_result_label, False, False, 0)
-
         return box
 
     def _on_check_scheduling_clicked(self, *_args) -> None:
         result = scheduling.check_cron_integrity()
         self.cron_check_label.set_text(f"Cron integrity: {result.detail}")
-
-    def _on_fix_scheduling_clicked(self, *_args) -> None:
-        ok, detail = scheduling.fix_scheduling()
-        # "Fix not applied" rather than "ran with errors" — `not ok` now
-        # also covers fix_scheduling()'s deliberate refusal to run at all
-        # when Timeshift's own scheduling is enabled (see scheduling.py),
-        # which isn't an error, just an informed no-op.
-        prefix = "Fix applied successfully." if ok else "Fix not applied:"
-        self.fix_result_label.set_text(f"{prefix}\n{detail}")
-        self._refresh_drive_status()
 
     # ------------------------------------------------------------------
     def _on_delete_event(self, *_args) -> bool:
