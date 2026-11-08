@@ -24,6 +24,12 @@
 # to tolerate exit 134 if any appear, regardless of what the recency
 # check says.
 #
+# HARDENED 2026-11-08 after both machines logged runs where Timeshift exited
+# 0 and printed "Snapshot saved successfully" while the backup drive was
+# failing (Samsung 2026-10-26 and 10-30, Dell 2026-11-08): it could not
+# write rsync-log-changes, info.json or the snapshots-* folders. Exit 0
+# alone isn't proof, so its output is now scanned too.
+#
 # Deliberately argument-free. This is the exact program path named in
 # io.github.11dash11.timeshiftondemand.backup's polkit exec.path annotation
 # (packaging/polkit/io.github.11dash11.timeshiftondemand.policy) — invoked as:
@@ -75,7 +81,23 @@ stdbuf -o0 -e0 /usr/bin/timeshift --create --tags D --scripted 2>&1 \
 ts_status=${PIPESTATUS[0]}
 output=$(cat "$TMP_OUTPUT")
 
-failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss'
+# No line anchors: progress fragments end in \r, so an error can share a
+# grep "line" with them. Deliberately NOT here, because healthy runs print
+# them too: "E: Failed to remove directory" + "Ret=256", and the upstream
+# "CRITICAL **: long_parse: assertion" warning. Also not a bare "Failed to
+# write file" or "Error opening file": Timeshift logs those for
+# rsync-log-changes with "File exists" (Samsung 2026-09-11 and 09-28) on
+# runs with no sign of a drive problem. A real drive failure names its
+# cause, which is what this matches.
+failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss|No space left on device|Read-only file system|Failed to create file|Error creating directory'
+
+# Timeshift can exit 0, and even say the snapshot was saved, after writes
+# to the drive failed. Report that as a failure (1: not one of pkexec's
+# 126/127), so the Backup tab and the prompt don't call it a success.
+if [[ "$ts_status" -eq 0 ]] && grep -qE "$failure_re" <<< "$output"; then
+    echo "Timeshift exited 0 but its output shows write errors (see above) - treating as failure. Check the backup drive, and don't rely on this snapshot."
+    exit 1
+fi
 
 # Exit 134 counts as success only on positive proof from this run's own
 # output: "Snapshot saved successfully" present, no failure phrase — the

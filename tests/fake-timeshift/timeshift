@@ -92,6 +92,51 @@ do_create() {
         success)
             create_preamble; saved_ok
             exit 0 ;;
+        success-benign-noise)
+            # seen on healthy real runs; must stay a success
+            create_preamble
+            echo "** (process:4242): CRITICAL **: 10:00:00.000: long_parse: assertion 'str != NULL' failed"
+            saved_ok
+            echo "E: Failed to remove directory"
+            echo "Ret=256"
+            exit 0 ;;
+        success-log-file-exists)
+            # real Samsung runs, 2026-09-11 and 09-28; no drive problem
+            create_preamble
+            echo "Stream has outstanding operationE: Error opening file /run/timeshift/12345/backup/timeshift/snapshots/x/rsync-log-changes: File exists"
+            echo "E: Failed to write file: /run/timeshift/12345/backup/timeshift/snapshots/x/rsync-log-changes"
+            saved_ok
+            exit 0 ;;
+        success-no-space)
+            create_preamble
+            echo "E: Failed to write file: /run/timeshift/12345/backup/timeshift/snapshots/x/rsync-log-changes: No space left on device"
+            saved_ok
+            exit 0 ;;
+        success-write-errors)
+            # shape of the real 2026-11-08 Dell log: exit 0, "saved", and
+            # the first error shares a line with \r progress fragments
+            create_preamble
+            printf '  1.58%% complete (00:03:33 remaining)\r  1.60%% complete (00:03:30 remaining)\rE: Error opening file /run/timeshift/12345/backup/timeshift/snapshots/x/rsync-log-changes: Input/output error\n'
+            echo "E: Failed to write file: /run/timeshift/12345/backup/timeshift/snapshots/x/rsync-log-changes"
+            echo "** (process:4242): CRITICAL **: 10:00:00.000: long_parse: assertion 'str != NULL' failed"
+            saved_ok
+            echo "E: Failed to remove directory"
+            echo "Ret=256"
+            exit 0 ;;
+        success-io-error-only)
+            create_preamble
+            echo "E: Failed to create file \"/run/timeshift/12345/backup/timeshift/snapshots/x/info.json.AB\": Input/output error"
+            saved_ok
+            exit 0 ;;
+        success-mkdir-error)
+            create_preamble; saved_ok
+            echo "E: Error creating directory /run/timeshift/12345/backup/timeshift/snapshots-daily: Permission denied"
+            exit 0 ;;
+        abort-saved-write-error)
+            create_preamble
+            echo "E: Failed to create file /run/timeshift/12345/backup/timeshift/snapshots/x/info.json.AB: Permission denied"
+            saved_ok; gobject_abort
+            exit 134 ;;
         generic-fail)
             echo "E: Failed to mount device '/dev/sdb1' at '/run/timeshift/12345/backup'"
             exit 1 ;;
