@@ -147,6 +147,35 @@ run_case "8  exit 139, saved successfully AND failure phrase -> stays 139" \
     segv-saved-and-failure-phrase 139 no \
     "Exit 139 but output shows a real failure"
 
+# Exit 0 isn't proof either: real runs have exited 0 and printed the saved
+# line while writes to a failing drive were erroring.
+
+run_case "9  exit 0, saved line, benign long_parse/remove-directory noise -> stays 0" \
+    success-benign-noise 0 no
+
+run_case "9b exit 0, saved line, rsync-log-changes 'File exists' -> stays 0" \
+    success-log-file-exists 0 no
+
+run_case "9c exit 0, saved line, No space left on device -> 1" \
+    success-no-space 1 no \
+    "treating as failure"
+
+run_case "10 exit 0, saved line, write error beside \\r progress -> 1" \
+    success-write-errors 1 no \
+    "treating as failure"
+
+run_case "11 exit 0, saved line, Input/output error -> 1" \
+    success-io-error-only 1 no \
+    "treating as failure"
+
+run_case "12 exit 0, saved line, Error creating directory -> 1" \
+    success-mkdir-error 1 no \
+    "treating as failure"
+
+run_case "13 exit 134, saved line, write error -> stays 134" \
+    abort-saved-write-error 134 no \
+    "Exit 134 but output shows a real failure"
+
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 

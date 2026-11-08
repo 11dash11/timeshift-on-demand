@@ -1,3 +1,16 @@
+timeshift-on-demand (0.1.0~dev22) UNRELEASED; urgency=low
+
+  * Backup helper: a run where Timeshift exits 0 but its output shows
+    write or I/O errors on the backup drive now counts as failed (exit 1)
+    instead of "Backup completed successfully". Real runs on both machines
+    had printed "Snapshot saved successfully" while failing to write
+    rsync-log-changes, info.json and the snapshots-* folders. The same
+    wider list of errors applies to the exit 134/139 checks. The benign
+    long_parse warning, "Failed to remove directory" and a "File exists"
+    error on rsync-log-changes don't count.
+
+ -- JShin <11dash11@users.noreply.github.com>  Sun, 08 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev21) UNRELEASED; urgency=low
 
   * Settings tab: checkboxes to turn the login prompt and the resume prompt
