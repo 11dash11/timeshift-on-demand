@@ -1,3 +1,22 @@
+timeshift-on-demand (0.1.0~dev23) UNRELEASED; urgency=low
+
+  * Drive lookup: Timeshift mounts the backup drive a second time at
+    /run/timeshift/<pid>/backup while it runs, so findmnt printed two
+    lines and the Dashboard showed a two-line "mount point" with usage and
+    snapshot errors during every backup. status.find_backup_mount and the
+    prompt script now take the first mount and ignore anything under
+    /run/timeshift/ (so a stale mount left by a crashed run doesn't count
+    as the drive being mounted either).
+  * Failure wording: the backup helper now ends every failure with one
+    "BACKUP-FAILED: <reason>" line in plain English. The Backup tab status
+    line and the login/resume prompt's notification show that sentence
+    instead of "exit code 1". If the helper gave no reason (pkexec's own
+    exit codes), the exit code is still shown.
+  * packaging/bin/timeshift-on-demand: header no longer mentions the
+    retired cron-fix helper.
+
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 11 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev22) UNRELEASED; urgency=low
 
   * Backup helper: a run where Timeshift exits 0 but its output shows

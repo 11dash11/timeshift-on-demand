@@ -55,6 +55,10 @@ DRIVE_WAIT_INTERVAL_S = 5
 PKEXEC_EXIT_DISMISSED = 126  # user dismissed the authentication dialog
 PKEXEC_EXIT_NOT_AUTHORIZED = 127  # auth failed/denied, or no matching policy action
 
+# The helper ends every failure with "BACKUP-FAILED: <plain-English reason>"
+# (packaging/helpers/timeshift-on-demand-backup-helper).
+FAILURE_MARKER = "BACKUP-FAILED: "
+
 
 def _trim_log() -> None:
     try:
@@ -76,6 +80,7 @@ class BackupResult:
     finished_at: datetime
     exit_code: int
     drive_mounted: bool
+    reason: Optional[str] = None  # the helper's plain-English failure reason, if it gave one
 
     @property
     def success(self) -> bool:
@@ -102,6 +107,7 @@ class BackupRunner:
         self._thread: Optional[threading.Thread] = None
         self.is_running = False
         self.result: Optional[BackupResult] = None
+        self._failure_reason: Optional[str] = None
 
     def _log(self, msg: str, persist: bool = True) -> str:
         """Queue a line for the Backup tab and (unless persist=False)
@@ -131,6 +137,8 @@ class BackupRunner:
                 text = raw.strip()
                 if not text:
                     continue
+                if text.startswith(FAILURE_MARKER):
+                    self._failure_reason = text[len(FAILURE_MARKER):].strip() or None
                 if classify(text).kind == PROGRESS:
                     pending = self._log(text, persist=False)
                     continue
@@ -248,6 +256,7 @@ class BackupRunner:
         # backup. A first full rsync backup to USB can legitimately take
         # longer than an hour.
         exit_code = -1
+        self._failure_reason = None
         try:
             with subprocess.Popen(
                 ["pkexec", BACKUP_HELPER],
@@ -274,7 +283,10 @@ class BackupRunner:
         else:
             self._log(f"Backup finished with exit code {exit_code}.")
 
-        return BackupResult(started, datetime.now(), exit_code=exit_code, drive_mounted=True)
+        return BackupResult(
+            started, datetime.now(), exit_code=exit_code, drive_mounted=True,
+            reason=self._failure_reason if exit_code != 0 else None,
+        )
 
     def _finish(self, result: BackupResult, on_done: Optional[Callable[[BackupResult], None]]) -> None:
         self.result = result

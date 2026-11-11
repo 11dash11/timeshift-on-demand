@@ -2,8 +2,8 @@
 #
 # Thin launcher installed to /usr/bin/timeshift-on-demand by the .deb.
 # The app itself is plain Python/GTK3, launched unprivileged — no pkexec
-# here. Individual privileged actions (backup, cron-fix) are pkexec'd
-# from within the running app itself, one call per action, against the
-# two helpers in /usr/lib/timeshift-on-demand/ — never the whole process.
+# here. The one privileged action, the backup, is pkexec'd from within the
+# running app itself, against the helper in /usr/lib/timeshift-on-demand/
+# — never the whole process.
 #
 exec python3 /usr/share/timeshift-on-demand/main.py "$@"

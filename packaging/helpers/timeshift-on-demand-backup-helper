@@ -89,6 +89,17 @@ output=$(cat "$TMP_OUTPUT")
 # rsync-log-changes with "File exists" (Samsung 2026-09-11 and 09-28) on
 # runs with no sign of a drive problem. A real drive failure names its
 # cause, which is what this matches.
+# On every failure, the last thing printed is one "BACKUP-FAILED: <reason>"
+# line in plain English. The Backup tab and the login/resume prompt show it
+# instead of a bare exit code. Keep the prefix in step with
+# FAILURE_MARKER in src/backup_runner.py and the prompt script.
+fail() {
+    local code=$1; shift
+    echo
+    echo "BACKUP-FAILED: $*"
+    exit "$code"
+}
+
 failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/output error|Journal has aborted|potential data loss|No space left on device|Read-only file system|Failed to create file|Error creating directory'
 
 # Timeshift can exit 0, and even say the snapshot was saved, after writes
@@ -96,7 +107,7 @@ failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/outpu
 # 126/127), so the Backup tab and the prompt don't call it a success.
 if [[ "$ts_status" -eq 0 ]] && grep -qE "$failure_re" <<< "$output"; then
     echo "Timeshift exited 0 but its output shows write errors (see above) - treating as failure. Check the backup drive, and don't rely on this snapshot."
-    exit 1
+    fail 1 "Timeshift reported success, but its output shows write errors. Check the backup drive and don't rely on this snapshot."
 fi
 
 # Exit 134 counts as success only on positive proof from this run's own
@@ -111,7 +122,7 @@ fi
 if [[ "$ts_status" -eq 134 ]]; then
     if grep -qE "$failure_re" <<< "$output"; then
         echo "Exit 134 but output shows a real failure (see above) - not treating as success."
-        exit "$ts_status"
+        fail "$ts_status" "Timeshift crashed and its output shows write errors. Check the backup drive and don't rely on this snapshot."
     fi
     if grep -q 'Snapshot saved successfully' <<< "$output"; then
         echo "Exit 134 (abort) after the snapshot was already saved - treating as success."
@@ -129,7 +140,7 @@ fi
 if [[ "$ts_status" -eq 139 ]]; then
     if grep -qE "$failure_re" <<< "$output"; then
         echo "Exit 139 but output shows a real failure (see above) - not treating as success."
-        exit "$ts_status"
+        fail "$ts_status" "Timeshift crashed and its output shows write errors. Check the backup drive and don't rely on this snapshot."
     fi
     if grep -q 'Snapshot saved successfully' <<< "$output"; then
         echo "Exit 139 (segfault) after the snapshot was already saved - treating as success."
@@ -137,4 +148,10 @@ if [[ "$ts_status" -eq 139 ]]; then
     fi
 fi
 
-exit "$ts_status"
+if [[ "$ts_status" -ne 0 ]]; then
+    case "$ts_status" in
+        134|139) fail "$ts_status" "Timeshift crashed before saving the snapshot (exit code $ts_status). See the log for details." ;;
+        *)       fail "$ts_status" "Timeshift failed (exit code $ts_status). See the log for details." ;;
+    esac
+fi
+exit 0

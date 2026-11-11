@@ -53,8 +53,11 @@ fi
 # --- runner --------------------------------------------------------------
 
 # run_case NAME SCENARIO EXPECTED_EXIT EXPECT_LIST_CALLED(yes|no) [EXPECTED_MESSAGE]
+#   [EXPECTED_REASON_SUBSTRING]
+# Every nonzero exit must end with a "BACKUP-FAILED: <reason>" line, and
+# a zero exit must not print one.
 run_case() {
-    local name=$1 scenario=$2 want_exit=$3 want_list=$4 want_msg=${5:-}
+    local name=$1 scenario=$2 want_exit=$3 want_list=$4 want_msg=${5:-} want_reason=${6:-}
     local case_dir="$WORK/case-$scenario"
     local tmp="$case_dir/tmp" log="$case_dir/calls.log" out="$case_dir/out.txt"
     mkdir -p "$tmp"
@@ -81,6 +84,20 @@ run_case() {
 
     if [[ -n "$want_msg" ]]; then
         grep -qF -- "$want_msg" "$out" || problems+=("output missing: $want_msg")
+    fi
+
+    if [[ "$want_exit" -ne 0 ]]; then
+        grep -q '^BACKUP-FAILED: .\+' "$out" \
+            || problems+=("failure printed no BACKUP-FAILED: reason line")
+        [[ "$(tail -n 1 "$out")" == BACKUP-FAILED:* ]] \
+            || problems+=("BACKUP-FAILED: line is not the last line of output")
+    else
+        grep -q '^BACKUP-FAILED:' "$out" \
+            && problems+=("success printed a BACKUP-FAILED: line")
+    fi
+    if [[ -n "$want_reason" ]]; then
+        grep -F -- 'BACKUP-FAILED: ' "$out" | grep -qF -- "$want_reason" \
+            || problems+=("reason missing: $want_reason")
     fi
 
     local seen_during
@@ -111,11 +128,11 @@ run_case "1  exit 0, real success -> 0" \
     success 0 no
 
 run_case "2  exit 1, generic failure -> passes through as 1" \
-    generic-fail 1 no
+    generic-fail 1 no "" "Timeshift failed (exit code 1)"
 
 run_case "3  exit 134 + failure phrase, recent snapshot exists -> stays 134" \
     abort-with-failure-phrase 134 no \
-    "Exit 134 but output shows a real failure"
+    "Exit 134 but output shows a real failure" "write errors"
 
 # Exit 134 follows the same rule as 139: success only when this run's
 # output says "Snapshot saved successfully" and has no failure phrase.
@@ -141,7 +158,7 @@ run_case "6  exit 139, 'Snapshot saved successfully', no failure phrase -> toler
     "Exit 139 (segfault) after the snapshot was already saved"
 
 run_case "7  exit 139, snapshot never saved -> stays 139" \
-    segv-not-saved 139 no
+    segv-not-saved 139 no "" "crashed before saving the snapshot (exit code 139)"
 
 run_case "8  exit 139, saved successfully AND failure phrase -> stays 139" \
     segv-saved-and-failure-phrase 139 no \
@@ -162,7 +179,7 @@ run_case "9c exit 0, saved line, No space left on device -> 1" \
 
 run_case "10 exit 0, saved line, write error beside \\r progress -> 1" \
     success-write-errors 1 no \
-    "treating as failure"
+    "treating as failure" "Timeshift reported success, but its output shows write errors"
 
 run_case "11 exit 0, saved line, Input/output error -> 1" \
     success-io-error-only 1 no \
@@ -179,7 +196,7 @@ run_case "13 exit 134, saved line, write error -> stays 134" \
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 
-for t in test_progress test_backup_runner test_scheduling test_config test_prompt_settings; do
+for t in test_progress test_backup_runner test_status test_scheduling test_config test_prompt_settings; do
     if python3 "$TESTS_DIR/$t.py" >"$WORK/$t.out" 2>&1; then
         printf 'PASS  unit tests: %s\n' "$t"
         pass=$((pass + 1))
