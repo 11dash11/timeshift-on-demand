@@ -13,6 +13,7 @@ src/progress_filter.py usr/share/timeshift-on-demand/
 src/scheduling.py usr/share/timeshift-on-demand/
 src/status.py usr/share/timeshift-on-demand/
 src/tray.py usr/share/timeshift-on-demand/
+src/tray_state.py usr/share/timeshift-on-demand/
 
 packaging/bin/timeshift-on-demand usr/bin/
 packaging/bin/timeshift-on-demand-prompt usr/bin/

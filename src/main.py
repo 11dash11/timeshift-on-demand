@@ -25,7 +25,7 @@ import tray  # noqa: E402
 def main() -> int:
     app = TimeshiftCompanionApp()
 
-    indicator_holder = {}  # keep a strong ref so GC doesn't drop the indicator
+    indicator_holder = {}  # keep a strong ref so GC doesn't drop the tray
 
     def on_activate(_app):
         if not app.window:
@@ -35,15 +35,18 @@ def main() -> int:
         app.window.present()
 
         if "built" not in indicator_holder:
-            indicator = tray.build_tray(
+            handle = tray.build_tray(
                 app,
                 on_backup_now=lambda: app.window._on_trigger_clicked(),
                 on_show_window=lambda: app.window.present(),
                 on_quit=lambda: app.quit(),
             )
             indicator_holder["built"] = True
-            indicator_holder["indicator"] = indicator
-            if indicator is None:
+            indicator_holder["indicator"] = handle
+            if handle is not None:
+                # The window tells the tray when a backup starts and ends.
+                app.window.on_running_changed = handle.set_running
+            if handle is None:
                 print(
                     "Timeshift Companion: no AppIndicator3 binding found — "
                     "running without a tray icon. Window will quit normally "

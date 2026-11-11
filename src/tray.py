@@ -26,11 +26,39 @@ except (ValueError, ImportError):
 
 from gi.repository import Gtk  # noqa: E402
 
+from tray_state import tray_state  # noqa: E402
+
+# Shown instead of the normal icon (AppIndicator's "attention" status)
+# while a backup runs. A stock symbolic theme icon, present in the Adwaita,
+# Zorin and Breeze themes; the idle icon is never changed, so going back
+# to normal can't go wrong.
+ATTENTION_ICON = "emblem-synchronizing-symbolic"
+
+
+class Tray:
+    """The tray icon and its menu. Keep a reference for the app's lifetime."""
+
+    def __init__(self, indicator, backup_item):
+        self.indicator = indicator
+        self._backup_item = backup_item
+        self.set_running(False)
+
+    def set_running(self, running: bool) -> None:
+        """Label, clickability and icon, all from one place (tray_state.py)."""
+        state = tray_state(running)
+        self._backup_item.set_label(state.label)
+        self._backup_item.set_sensitive(state.item_sensitive)
+        self.indicator.set_status(
+            AppIndicator3.IndicatorStatus.ATTENTION
+            if state.attention_icon
+            else AppIndicator3.IndicatorStatus.ACTIVE
+        )
+
 
 def build_tray(app, on_backup_now, on_show_window, on_quit):
     """
-    Returns the indicator object (keep a reference alive for the app's
-    lifetime) or None if tray support isn't available.
+    Returns a Tray (keep a reference alive for the app's lifetime) or None
+    if tray support isn't available.
     """
     if AppIndicator3 is None:
         return None
@@ -40,7 +68,7 @@ def build_tray(app, on_backup_now, on_show_window, on_quit):
         "drive-harddisk",
         AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
     )
-    indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+    indicator.set_attention_icon_full(ATTENTION_ICON, "Backup running")
 
     menu = Gtk.Menu()
 
@@ -61,4 +89,4 @@ def build_tray(app, on_backup_now, on_show_window, on_quit):
     menu.show_all()
     indicator.set_menu(menu)
 
-    return indicator
+    return Tray(indicator, backup_item)
