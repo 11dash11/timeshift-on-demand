@@ -1,4 +1,4 @@
-"""Tests timeshift-on-demand-prompt's on/off check with stub zenity and findmnt.
+"""Tests timeshift-on-demand-prompt's on/off check and drive lookup with stub zenity and findmnt.
 The stub zenity answers No, so no backup and no monitor window ever start.
 Run: python3 tests/test_prompt_settings.py   (tests/run-tests.sh calls this too)"""
 import json
@@ -22,7 +22,7 @@ class PromptTests(unittest.TestCase):
         stubs.mkdir()
         for name, body in (
             ("zenity", f'echo called >> "{self.zenity_log}"; exit 1'),
-            ("findmnt", f'echo called >> "{self.findmnt_log}"; printf "%s" "${{FINDMNT_OUT-/mnt/backup}}"'),
+            ("findmnt", f'echo "$*" >> "{self.findmnt_log}"; printf "%s" "${{FINDMNT_OUT-/mnt/backup}}"'),
         ):
             stub = stubs / name
             stub.write_text(f"#!/bin/bash\n{body}\n")
@@ -30,6 +30,12 @@ class PromptTests(unittest.TestCase):
         self.config = d / "config" / "timeshift-on-demand" / "config.json"
         self.config.parent.mkdir(parents=True)
         self.log = d / "data" / "timeshift-on-demand" / "backup.log"
+        # Timeshift's config (the drive to wait for) is read from a fixed
+        # /etc path, so run a copy of the script pointed at a test file.
+        self.ts_config = d / "timeshift.json"
+        self.ts_config.write_text(json.dumps({"backup_device_uuid": "ts-uuid-1"}))
+        self.script = d / "prompt-under-test"
+        self.script.write_text(PROMPT.read_text().replace("/etc/timeshift/timeshift.json", str(self.ts_config)))
         (d / "run").mkdir()  # the script's done-flag goes here, not in the real /run/user
         self.env = dict(
             os.environ,
@@ -46,8 +52,8 @@ class PromptTests(unittest.TestCase):
         if isinstance(settings, str):
             self.config.write_text(settings)
         else:
-            self.config.write_text(json.dumps({"backup_drive_uuid": "abc", **settings}))
-        result = subprocess.run(["bash", str(PROMPT), *args], env=self.env, timeout=30, check=False)
+            self.config.write_text(json.dumps(settings))
+        result = subprocess.run(["bash", str(self.script), *args], env=self.env, timeout=30, check=False)
         self.assertEqual(result.returncode, 0)
         return self.zenity_log.exists()
 
@@ -75,11 +81,33 @@ class PromptTests(unittest.TestCase):
         self.assertTrue(self.run_prompt({"prompt_on_login": "false"}, "--login"))
 
     def test_broken_config_does_not_turn_it_off(self):
-        # The drive lookup also fails on this, so the script stops at "no
-        # drive", but it must not report the prompt as off.
-        self.run_prompt("{not json", "--login")
+        # The prompt settings are unreadable, so they default to on and the
+        # script carries on to the drive wait and the dialog.
+        self.assertTrue(self.run_prompt("{not json", "--login"))
         self.assertNotIn("is off", self.log.read_text())
-        self.assertIn("No backup drive configured", self.log.read_text())
+
+    def test_waits_for_the_drive_timeshift_is_configured_with(self):
+        self.run_prompt({}, "--login")
+        self.assertIn("UUID=ts-uuid-1", self.findmnt_log.read_text())
+
+    def test_old_drive_setting_in_config_is_ignored(self):
+        self.run_prompt({"backup_drive_uuid": "old-companion-uuid"}, "--login")
+        self.assertIn("UUID=ts-uuid-1", self.findmnt_log.read_text())
+        self.assertNotIn("old-companion-uuid", self.findmnt_log.read_text())
+
+    def test_timeshift_without_a_device_stops_and_says_why(self):
+        for text in ('{"backup_device_uuid": ""}', "{}", "[]", "{not json", '{"backup_device_uuid": 7}'):
+            with self.subTest(text=text):
+                self.findmnt_log.unlink(missing_ok=True)
+                self.ts_config.write_text(text)
+                self.assertFalse(self.run_prompt({}, "--login"))  # no dialog
+                self.assertFalse(self.findmnt_log.exists())       # no drive wait
+                self.assertIn("Timeshift has no backup device configured", self.log.read_text())
+
+    def test_missing_timeshift_config_stops_too(self):
+        self.ts_config.unlink()
+        self.assertFalse(self.run_prompt({}, "--login"))
+        self.assertIn("Timeshift has no backup device configured", self.log.read_text())
 
 
 class PromptMountTests(PromptTests):
@@ -113,6 +141,7 @@ class PromptFailureTests(PromptTests):
         script = d / "prompt-under-test"
         script.write_text(
             PROMPT.read_text()
+            .replace("/etc/timeshift/timeshift.json", str(self.ts_config))
             .replace("/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper", str(helper))
             .replace("/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor", str(monitor))
             .replace("/usr/share/timeshift-on-demand/last_run.py", str(LAST_RUN))
@@ -128,7 +157,7 @@ class PromptFailureTests(PromptTests):
             stub = d / "bin" / name
             stub.write_text(f"#!/bin/bash\n{body}\n")
             stub.chmod(0o755)
-        self.config.write_text(json.dumps({"backup_drive_uuid": "abc"}))
+        self.config.write_text("{}")
         # Earlier run's reason in the same log must not be picked up.
         self.log.parent.mkdir(parents=True, exist_ok=True)
         self.log.write_text("BACKUP-FAILED: stale reason from an older run\n")

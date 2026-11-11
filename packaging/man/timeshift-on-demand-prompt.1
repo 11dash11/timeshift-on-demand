@@ -5,9 +5,8 @@ timeshift-on-demand-prompt \- zenity-confirmed on-demand Timeshift backup, headl
 .B timeshift-on-demand-prompt
 .RB [ \-\-login | \-\-resume ]
 .SH DESCRIPTION
-Reads the backup drive configured via the
-.BR timeshift-on-demand (1)
-Settings tab, waits for it to mount, asks for confirmation with
+Reads the backup device Timeshift itself is configured with
+(\fI/etc/timeshift/timeshift.json\fR), waits for it to mount, asks for confirmation with
 .BR zenity (1),
 and on confirmation spawns a live monitor terminal window before
 running the backup via

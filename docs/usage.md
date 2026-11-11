@@ -23,8 +23,9 @@ A read-only glance:
   backup drive. No password needed; the drive just has to be mounted.
   If a snapshot folder exists without Timeshift's `info.json`, it's shown
   as "incomplete" (a backup still running, or one that didn't finish).
-- **Backup drive** — usage of whichever drive is configured in Settings,
-  if it's currently mounted.
+- **Backup drive** — usage of the drive Timeshift is set up to back up to
+  (Timeshift → Settings → Location), if it's currently mounted. If
+  Timeshift has no backup device yet, this says so.
 - **Refresh** / **Open Timeshift** — Refresh re-fetches both; Open
   Timeshift launches the real Timeshift GUI for anything beyond this
   glance.
@@ -80,19 +81,19 @@ The login/resume prompt does the same when it finishes.
 
 ![Settings tab](images/settings.png)
 
-Pick which drive Companion should wait for before attempting a backup.
-The dropdown lists currently-detected drives with a filesystem — pick
-yours, click **Save Selection**. **Clear** removes the configured drive
-entirely (Companion will then decline to run a backup until one is set
-again, rather than guessing).
+There is no drive to pick here. Backups go to the drive chosen in
+Timeshift itself (Timeshift → Settings → Location), and that's the one
+Companion waits for, so there's only one place to set it. The Dashboard
+shows its status, and **Open Timeshift** takes you to Timeshift to change
+it. See
+[troubleshooting.md](troubleshooting.md#timeshift-has-no-backup-device-set)
+if Companion says Timeshift has no backup device.
 
-This setting is **independent of Timeshift's own configured backup
-device** — see
-[installation.md](installation.md#first-launch) and
-[troubleshooting.md](troubleshooting.md#timeshift-is-configured-to-back-up-to-a-different-device)
-for why both need to match.
+Older versions had a drive dropdown of their own. If you used it, that
+choice is now ignored and removed from your settings file the next time
+you change a setting here.
 
-The two checkboxes below the drive picker turn the
+The two checkboxes here turn the
 [login and resume prompts](#auto-prompts-login-and-resume) on or off
 separately. Both start on, and a change applies from the next login or
 resume.

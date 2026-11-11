@@ -17,7 +17,7 @@ class StreamTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         backup_runner.LOGFILE = Path(self.tmp.name) / "backup.log"
-        self.r = backup_runner.BackupRunner("uuid")
+        self.r = backup_runner.BackupRunner()
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -95,7 +95,7 @@ class RunBackupOutcomeTests(unittest.TestCase):
         proc.stdout = iter(output)
         proc.returncode = code
         with mock.patch.object(backup_runner.subprocess, "Popen", return_value=proc):
-            return backup_runner.BackupRunner("u")._run_backup(datetime.now())
+            return backup_runner.BackupRunner()._run_backup(datetime.now())
 
     def test_success_recorded(self):
         r = self.run_with(["ok\n"], 0)
@@ -128,18 +128,44 @@ class RunBackupOutcomeTests(unittest.TestCase):
         self.assertIn("denied", r.reason)
         self.assertEqual(last_run.load().outcome, "failed")
 
+    def test_waits_for_the_drive_timeshift_is_configured_with(self):
+        import status
+        with mock.patch.object(status, "get_timeshift_backup_device_uuid", return_value="ts-uuid"), \
+                mock.patch.object(status, "find_backup_mount", return_value="/mnt/b") as find:
+            self.run_with(["ok\n"], 0)
+        find.assert_called_with("ts-uuid")
+
+    def test_timeshift_without_a_device_says_so_and_does_not_run(self):
+        import status
+        last_run.record(last_run.SUCCESS, source="prompt")
+        with mock.patch.object(status, "get_timeshift_backup_device_uuid", return_value=None), \
+                mock.patch.object(backup_runner.subprocess, "Popen") as popen:
+            r = backup_runner.BackupRunner()._run_backup(datetime.now())
+        popen.assert_not_called()  # no pkexec prompt for nothing
+        self.assertFalse(r.drive_mounted)
+        self.assertIn("no backup device", r.reason)
+        self.assertEqual(last_run.load().source, "prompt")  # record untouched
+
+    def test_drive_that_never_mounts_gets_a_reason(self):
+        with mock.patch("status.find_backup_mount", return_value=None), \
+                mock.patch.object(backup_runner, "DRIVE_WAIT_ATTEMPTS", 1), \
+                mock.patch.object(backup_runner, "DRIVE_WAIT_INTERVAL_S", 0):
+            r = backup_runner.BackupRunner()._run_backup(datetime.now())
+        self.assertFalse(r.drive_mounted)
+        self.assertIn("wasn't mounted", r.reason)
+
     def test_run_that_never_started_leaves_record_alone(self):
         last_run.record(last_run.SUCCESS, source="prompt")
         with mock.patch("status.find_backup_mount", return_value=None), \
                 mock.patch.object(backup_runner, "DRIVE_WAIT_ATTEMPTS", 1), \
                 mock.patch.object(backup_runner, "DRIVE_WAIT_INTERVAL_S", 0):
-            r = backup_runner.BackupRunner("u")._run_backup(datetime.now())
+            r = backup_runner.BackupRunner()._run_backup(datetime.now())
         self.assertFalse(r.drive_mounted)
         got = last_run.load()
         self.assertEqual((got.outcome, got.source), ("success", "prompt"))
 
     def test_runner_error_recorded_as_failed(self):
-        r = backup_runner.BackupRunner("u")
+        r = backup_runner.BackupRunner()
         with mock.patch.object(r, "_run_backup", side_effect=RuntimeError("boom")):
             r._run(None)
         self.assertEqual(r.result.exit_code, -1)

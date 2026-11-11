@@ -49,8 +49,9 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
   pkexec's own `126` (dialog dismissed) and `127` (not authorized) reach
   the caller the same way.
 - Tested by `tests/run-tests.sh` (a fake `timeshift`; no root needed).
-- **Caller's job, not the helper's:** waiting for the drive to mount,
-  checking that Companion's and Timeshift's configured drives match, and
+- **Caller's job, not the helper's:** waiting for the drive to mount (the
+  drive is the `backup_device_uuid` in `/etc/timeshift/timeshift.json`;
+  Companion has no drive setting of its own), and
   any `ionice`/`nice` (wrap the `pkexec` call itself).
 
 ### Snapshot list — no privileged action
@@ -67,9 +68,9 @@ of whether the GTK app is running. The autostart entry passes `--login`
 and the resume hook passes `--resume`; the script exits straight away if
 `prompt_on_login` or `prompt_on_resume` is `false` in `config.json` (the
 Settings tab's checkboxes). With no flag it always prompts. It reads the
-drive UUID from
-`~/.config/timeshift-on-demand/config.json`, waits up to 180 s for that
-drive to mount, asks with `zenity`, then opens the progress window and
+drive UUID from Timeshift's own `/etc/timeshift/timeshift.json`
+(`backup_device_uuid`; it stops with a log line if that's empty), waits
+up to 180 s for that drive to mount, asks with `zenity`, then opens the progress window and
 runs `ionice -c2 -n7 nice -n10 pkexec <backup-helper>`, the same helper
 the GUI uses.
 

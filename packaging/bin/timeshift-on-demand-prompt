@@ -19,9 +19,8 @@
 # Ports the "live monitor window" behavior of the author's earlier
 # standalone timeshift-ondemand-backup.sh script, with two portability
 # fixes: `sudo` -> `pkexec` against Companion's own
-# bundled helper, and the hardcoded drive UUID replaced by whatever the
-# user configured in Companion's Settings tab
-# (~/.config/timeshift-on-demand/config.json — see src/config.py).
+# bundled helper, and the hardcoded drive UUID replaced by the backup
+# device Timeshift itself is configured with (/etc/timeshift/timeshift.json).
 #
 # No time-window restriction (the old script's 16:00-17:30
 # scheduled-backup-slot block) — on-demand runs are always allowed.
@@ -33,6 +32,7 @@ GUI_MONITOR="/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor"
 BACKUP_HELPER="/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
 LAST_RUN_PY="/usr/share/timeshift-on-demand/last_run.py"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/timeshift-on-demand/config.json"
+TIMESHIFT_CONFIG="/etc/timeshift/timeshift.json"
 
 mkdir -p "$(dirname "$LOGFILE")"
 
@@ -81,17 +81,21 @@ except Exception:
     fi
 fi
 
+# The drive to wait for is whichever backup device Timeshift itself is
+# configured with (world-readable), since that's where the backup goes.
+# Same reading rules as status.get_timeshift_backup_device_uuid().
 DRIVE_UUID=$(python3 -c "
 import json, sys
 try:
     with open(sys.argv[1], encoding='utf-8') as f:
-        print(json.load(f).get('backup_drive_uuid') or '')
+        uuid = json.load(f).get('backup_device_uuid')
+    print(uuid if isinstance(uuid, str) else '')
 except Exception:
     print('')
-" "$CONFIG_FILE" 2>/dev/null)
+" "$TIMESHIFT_CONFIG" 2>/dev/null)
 
 if [[ -z "$DRIVE_UUID" ]]; then
-    log_error "No backup drive configured (open Timeshift On Demand's Settings tab) — exiting, nothing done."
+    log_error "Timeshift has no backup device configured yet (open Timeshift and finish its setup) — exiting, nothing done."
     exit 0
 fi
 

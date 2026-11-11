@@ -3,16 +3,17 @@ config.py — per-user settings for Timeshift On Demand.
 
 XDG-compliant: reads/writes ~/.config/timeshift-on-demand/config.json
 (respecting $XDG_CONFIG_HOME if set, same pattern backup_runner.py uses
-for $XDG_DATA_HOME). Two kinds of setting: which backup drive (by
-filesystem UUID, not mount point — mount points move, UUIDs don't) the
-Backup tab should wait for before running a backup, and whether the
-login and resume prompts are on. timeshift-on-demand-prompt reads this
-same file; it treats only an explicit JSON false as "off", as here.
+for $XDG_DATA_HOME). The only settings are whether the login and resume
+prompts are on. timeshift-on-demand-prompt reads this same file; it
+treats only an explicit JSON false as "off", as here.
 
-No first-run wizard, by design: an absent
-config file just means "not configured yet" — BackupRunner handles a
-None uuid by reporting that clearly instead of guessing or blocking
-startup. The Settings tab (app.py) is the only way to set or change it.
+There is no backup-drive setting: backups go to the device Timeshift
+itself is configured with (status.get_timeshift_backup_device_uuid()).
+Older versions stored a "backup_drive_uuid" here; it is ignored, and
+disappears from the file the next time a setting is saved.
+
+No first-run wizard, by design: an absent config file just means the
+defaults (both prompts on).
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ import json
 import os
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Optional
 
 
 def _config_dir() -> Path:
@@ -35,7 +35,6 @@ CONFIG_PATH = _config_dir() / "config.json"
 
 @dataclass
 class Settings:
-    backup_drive_uuid: Optional[str] = None
     prompt_on_login: bool = True
     prompt_on_resume: bool = True
 
@@ -49,7 +48,6 @@ def load_settings() -> Settings:
     if not isinstance(data, dict):
         return Settings()
     return Settings(
-        backup_drive_uuid=data.get("backup_drive_uuid") or None,
         # A prompt silently going quiet is the worse mistake here, so
         # anything other than an explicit false leaves it on.
         prompt_on_login=data.get("prompt_on_login") is not False,

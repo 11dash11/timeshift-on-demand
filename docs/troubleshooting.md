@@ -6,11 +6,13 @@ project's own testing — not hypothetical.
 ## "Backup drive not mounted after wait" / nothing happens
 
 Companion waits up to 3 minutes (36 attempts, 5 seconds apart) for the
-configured drive to mount before giving up quietly. If you triggered a
+backup drive (the one Timeshift is set to use) to mount before giving up quietly. If you triggered a
 backup (manually or via an auto-prompt) and nothing visible happened:
 
-1. Check the drive is actually connected and mounted:
-   `findmnt -S UUID=<your-drive-uuid>`.
+1. Check the drive is actually connected and mounted. The UUID to look
+   for is Timeshift's `backup_device_uuid` in
+   `/etc/timeshift/timeshift.json`:
+   `findmnt -S UUID=<that-uuid>`.
 2. Check the log:
    ```bash
    tail -30 ~/.local/share/timeshift-on-demand/backup.log
@@ -43,8 +45,7 @@ backup (manually or via an auto-prompt) and nothing visible happened:
 ## Dashboard shows "Snapshots: unavailable — …"
 
 The Dashboard reads snapshots straight from Timeshift's own backup drive
-(the one set in Timeshift → Settings → Location, which isn't necessarily
-the drive picked in Companion's Settings tab). The message after the
+(the one set in Timeshift → Settings → Location). The message after the
 dash says why it couldn't:
 
 - **"Timeshift's backup drive isn't mounted"** — plug it in (or open it
@@ -57,25 +58,21 @@ dash says why it couldn't:
   separate backup drive, so the Dashboard can't count them; use
   **Open Timeshift** instead.
 
-## "Timeshift is configured to back up to a different device"
+## Timeshift has no backup device set
 
-This is the single most common real-world setup mistake, and Companion
-is specifically designed to catch it *before* wasting your time. Two
-completely separate settings both need to point at the same drive:
+Companion has no drive setting of its own: it waits for, and backs up
+to, the device Timeshift is configured with (Timeshift → Settings →
+Location). If Timeshift has never been given one, Companion says so
+straight away (on the Backup tab, in the Dashboard's "Backup drive"
+line, or in `backup.log` for the login/resume prompt) instead of waiting
+for a drive that doesn't exist, and doesn't ask for your password.
 
-- **Companion's own setting** (Settings tab → drive dropdown) — which
-  drive Companion waits for before attempting anything.
-- **Timeshift's own setting** (Timeshift → Settings → Location) — which
-  device Timeshift will actually write snapshots to.
+**Fix:** open Timeshift (**Open Timeshift** on the Dashboard), complete
+its setup and pick the backup drive, then try again.
 
-If they don't match — or Timeshift has never been configured with a
-backup device at all — Companion fails fast (before even waiting for
-the drive to mount) with a message telling you exactly which UUID it
-expected versus what Timeshift is configured for.
-
-**Fix:** open Timeshift itself and either repoint its backup device to
-match, or update Companion's Settings tab to match Timeshift's — either
-direction works, they just both need to agree.
+Older versions had a second drive setting in Companion that could
+disagree with Timeshift's ("Timeshift is configured to back up to a
+different device"). That setting is gone, so the mismatch can't happen.
 
 ## Maintenance tab says a cron file exists
 

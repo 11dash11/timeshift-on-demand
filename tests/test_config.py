@@ -25,15 +25,21 @@ class ConfigTests(unittest.TestCase):
 
     def test_missing_file_means_prompts_on(self):
         s = config.load_settings()
-        self.assertIsNone(s.backup_drive_uuid)
         self.assertTrue(s.prompt_on_login)
         self.assertTrue(s.prompt_on_resume)
 
-    def test_existing_config_without_the_new_keys_keeps_prompts_on(self):
+    def test_old_config_with_a_drive_setting_loads_and_ignores_it(self):
         self.write(json.dumps({"backup_drive_uuid": "abc"}))
         s = config.load_settings()
-        self.assertEqual(s.backup_drive_uuid, "abc")
+        self.assertFalse(hasattr(s, "backup_drive_uuid"))
         self.assertTrue(s.prompt_on_login and s.prompt_on_resume)
+
+    def test_saving_drops_the_old_drive_setting_and_keeps_the_prompts(self):
+        self.write(json.dumps({"backup_drive_uuid": "abc", "prompt_on_login": False}))
+        config.update_settings(prompt_on_resume=False)
+        saved = json.loads(config.CONFIG_PATH.read_text())
+        self.assertNotIn("backup_drive_uuid", saved)
+        self.assertEqual((saved["prompt_on_login"], saved["prompt_on_resume"]), (False, False))
 
     def test_only_explicit_false_turns_a_prompt_off(self):
         self.write(json.dumps({"prompt_on_login": False, "prompt_on_resume": "false"}))
@@ -47,19 +53,11 @@ class ConfigTests(unittest.TestCase):
                 self.write(text)
                 self.assertEqual(config.load_settings(), config.Settings())
 
-    def test_saving_or_clearing_the_drive_keeps_prompt_settings(self):
-        config.update_settings(prompt_on_login=False, prompt_on_resume=False)
-        config.update_settings(backup_drive_uuid="abc")
-        config.update_settings(backup_drive_uuid=None)
-        s = config.load_settings()
-        self.assertFalse(s.prompt_on_login)
-        self.assertFalse(s.prompt_on_resume)
-
-    def test_toggling_a_prompt_keeps_the_drive_and_other_prompt(self):
-        config.update_settings(backup_drive_uuid="abc")
+    def test_toggling_one_prompt_keeps_the_other(self):
+        config.update_settings(prompt_on_login=False)
         config.update_settings(prompt_on_resume=False)
+        config.update_settings(prompt_on_login=True)
         s = config.load_settings()
-        self.assertEqual(s.backup_drive_uuid, "abc")
         self.assertTrue(s.prompt_on_login)
         self.assertFalse(s.prompt_on_resume)
 

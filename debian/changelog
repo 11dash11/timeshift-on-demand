@@ -1,3 +1,27 @@
+timeshift-on-demand (0.1.0~dev25) UNRELEASED; urgency=low
+
+  * Companion no longer has a backup-drive setting of its own. Backups
+    already went wherever Timeshift's own backup device pointed, and the
+    two settings could disagree (the "most common setup mistake"), so the
+    drive Companion waits for, the Dashboard's drive line and the login/
+    resume prompt now all use the backup_device_uuid in Timeshift's
+    world-readable /etc/timeshift/timeshift.json. If Timeshift has no
+    device yet, the Backup tab says so at once, with no password prompt and
+    no 3-minute wait; the prompt script logs it and stops.
+  * Settings tab: the drive dropdown and its Refresh/Save/Clear buttons are
+    gone; only the two prompt checkboxes remain, plus a note pointing at
+    Timeshift's own Location setting. An old backup_drive_uuid in
+    config.json is ignored (and dropped from the file on the next save).
+  * The Backup tab's "did not run" line now says why (no device in
+    Timeshift, or the drive never mounted).
+  * status.py: a non-object or undecodable /etc/timeshift/timeshift.json
+    now reads as "not configured" instead of raising. Removed the unused
+    drive-listing code.
+  * packaging/future/drive-connect-trigger/ (parked, not shipped) is noted
+    as needing its drive comparison rewritten before it is wired in.
+
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 11 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev24) UNRELEASED; urgency=low
 
   * Dashboard: new first line "Last backup: succeeded / FAILED",

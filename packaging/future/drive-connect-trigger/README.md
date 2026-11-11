@@ -6,6 +6,13 @@ None of the three files in this directory are referenced by
 them. This is intentional — JShin asked for the design to be recorded
 and built so it's ready to activate later, without committing to it now.
 
+**Out of date (0.1.0~dev25):** the check script still matches the
+connected drive against `backup_drive_uuid` in each user's `config.json`.
+Companion no longer has that setting; the drive to match is now the
+`backup_device_uuid` in Timeshift's world-readable
+`/etc/timeshift/timeshift.json`. Rewrite the comparison (it can drop the
+per-user config lookup) before wiring this in.
+
 ## What this would add
 
 A third automatic trigger for the `zenity` on-demand-backup prompt,
