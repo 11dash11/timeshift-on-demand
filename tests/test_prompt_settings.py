@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 PROMPT = Path(__file__).resolve().parent.parent / "packaging/bin/timeshift-on-demand-prompt"
+LAST_RUN = Path(__file__).resolve().parent.parent / "src/last_run.py"
 
 
 class PromptTests(unittest.TestCase):
@@ -114,6 +115,7 @@ class PromptFailureTests(PromptTests):
             PROMPT.read_text()
             .replace("/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper", str(helper))
             .replace("/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor", str(monitor))
+            .replace("/usr/share/timeshift-on-demand/last_run.py", str(LAST_RUN))
         )
         notify_log = d / "notify.log"
         for name, body in (
@@ -142,6 +144,33 @@ class PromptFailureTests(PromptTests):
     def test_reason_found_after_progress_fragment_on_same_line(self):
         out = self.run_failing("5% complete\\rBACKUP-FAILED: Check the drive.\\n", 1)
         self.assertIn("Check the drive.", out)
+
+    def recorded(self):
+        path = Path(self.tmp.name) / "data" / "timeshift-on-demand" / "last-run.json"
+        return json.loads(path.read_text())
+
+    def test_failure_recorded_for_the_dashboard(self):
+        self.run_failing("BACKUP-FAILED: Check the drive.\\n", 1)
+        got = self.recorded()
+        self.assertEqual((got["outcome"], got["reason"], got["source"]),
+                         ("failed", "Check the drive.", "prompt"))
+
+    def test_failure_without_reason_recorded_with_sentence(self):
+        self.run_failing("boom\\n", 3)
+        self.assertIn("exit code 3", self.recorded()["reason"])
+
+    def test_success_recorded(self):
+        self.run_failing("fine\\n", 0)
+        self.assertEqual(self.recorded()["outcome"], "success")
+
+    def test_dismissed_dialog_leaves_the_record_alone(self):
+        d = Path(self.tmp.name) / "data" / "timeshift-on-demand"
+        d.mkdir(parents=True)
+        (d / "last-run.json").write_text(json.dumps(
+            {"finished_at": "2026-11-08T11:59:00+02:00", "outcome": "failed",
+             "reason": "earlier failure", "source": "prompt"}))
+        self.run_failing("", 126)
+        self.assertEqual(self.recorded()["reason"], "earlier failure")
 
     def test_no_reason_falls_back_to_exit_code(self):
         out = self.run_failing("boom\\n", 3)

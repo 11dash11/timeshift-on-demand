@@ -31,6 +31,7 @@
 LOGFILE="${XDG_DATA_HOME:-$HOME/.local/share}/timeshift-on-demand/backup.log"
 GUI_MONITOR="/usr/lib/timeshift-on-demand/timeshift-on-demand-gui-monitor"
 BACKUP_HELPER="/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
+LAST_RUN_PY="/usr/share/timeshift-on-demand/last_run.py"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/timeshift-on-demand/config.json"
 
 mkdir -p "$(dirname "$LOGFILE")"
@@ -48,6 +49,12 @@ log() {
 }
 log_info() { log "INFO" "$@"; }
 log_error() { log "ERROR" "$@"; }
+
+# Tell the Dashboard how this run ended (src/last_run.py). Best effort: a
+# failure to record must never change the backup's outcome.
+record_last_run() {
+    python3 "$LAST_RUN_PY" record --source prompt --outcome "$1" ${2:+--reason="$2"} >/dev/null 2>&1 || true
+}
 
 log_info "Prompt script started"
 
@@ -154,14 +161,17 @@ else
 fi
 
 if [[ $ts_status -eq 0 ]]; then
+    record_last_run success
     log_info "Backup completed successfully."
     notify-send -i drive-harddisk "Timeshift On Demand" \
         "On-demand backup completed successfully." 2>/dev/null
 elif [[ $ts_status -eq 126 ]]; then
+    # Not recorded: the helper never ran, so an earlier failure stays on the Dashboard.
     log_error "Authentication dialog was dismissed — backup not run."
     notify-send -u critical -i dialog-error "Timeshift On Demand" \
         "Backup cancelled — authentication was dismissed." 2>/dev/null
 elif [[ $ts_status -eq 127 ]]; then
+    record_last_run failed "Authentication failed or was denied (pkexec exit 127) — check that the package's polkit policy is installed correctly."
     log_error "Authentication failed or was denied (pkexec exit 127)."
     notify-send -u critical -i dialog-error "Timeshift On Demand" \
         "Backup not authorized — check the polkit policy is installed correctly." 2>/dev/null
@@ -170,6 +180,7 @@ else
     # fragments can share its line, hence -a and the unanchored match).
     reason=$(tail -c +"$((RUN_START + 1))" "$LOGFILE" 2>/dev/null \
         | grep -ao 'BACKUP-FAILED: .*' | tail -n 1 | sed 's/^BACKUP-FAILED: //')
+    record_last_run failed "${reason:-Timeshift failed (exit code $ts_status). See the log for details.}"
     if [[ -n "$reason" ]]; then
         log_error "Backup failed (exit code $ts_status): $reason"
         notify-send -u critical -i dialog-error "Timeshift On Demand — Backup FAILED" \

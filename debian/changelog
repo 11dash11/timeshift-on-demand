@@ -1,3 +1,23 @@
+timeshift-on-demand (0.1.0~dev24) UNRELEASED; urgency=low
+
+  * Dashboard: new first line "Last backup: succeeded / FAILED",
+    with the time (and the year, when it isn't this one), where it was
+    started from and, for a failure, the plain-English reason. Both the Backup tab/tray and the login/resume
+    prompt record into ~/.local/share/timeshift-on-demand/last-run.json
+    (new src/last_run.py; replaced atomically, a bad file reads as "no run
+    recorded"). Only runs that reached the backup helper are recorded: a
+    dismissed password dialog leaves an earlier FAILED line showing.
+    A failed backup can leave a plausible-looking snapshot (see the Dell,
+    2026-11-08), so the snapshot list alone doesn't answer "did it work?".
+  * Desktop notification when a backup started from the Backup tab or tray
+    finishes (not while the window is in front), instead of only the
+    login/resume prompt notifying.
+  * Backup tab: a dismissed password dialog now reads "Backup cancelled:
+    Authentication dialog was dismissed" and a denied one gets a sentence,
+    instead of "exit code 126/127".
+
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 11 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev23) UNRELEASED; urgency=low
 
   * Drive lookup: Timeshift mounts the backup drive a second time at

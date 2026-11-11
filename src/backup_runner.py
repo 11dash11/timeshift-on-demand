@@ -30,6 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
+import last_run
 from progress_filter import PROGRESS, classify
 
 
@@ -80,7 +81,11 @@ class BackupResult:
     finished_at: datetime
     exit_code: int
     drive_mounted: bool
-    reason: Optional[str] = None  # the helper's plain-English failure reason, if it gave one
+    reason: Optional[str] = None  # plain-English failure reason, when one is known
+
+    @property
+    def cancelled(self) -> bool:
+        return self.exit_code == PKEXEC_EXIT_DISMISSED
 
     @property
     def success(self) -> bool:
@@ -194,9 +199,13 @@ class BackupRunner:
             result = self._run_backup(started)
         except Exception as exc:  # noqa: BLE001 — must not escape the worker thread
             self._log(f"Backup runner error: {exc!r}")
+            last_run.record(last_run.FAILED, f"Backup runner error: {exc!r}", source="backup-tab")
             # drive_mounted=True so the GUI reports "failed", not "did not
             # run" — we can't know how far the attempt got.
-            result = BackupResult(started, datetime.now(), exit_code=-1, drive_mounted=True)
+            result = BackupResult(
+                started, datetime.now(), exit_code=-1, drive_mounted=True,
+                reason=f"Backup runner error: {exc!r}",
+            )
         finally:
             self._finish(result, on_done)
 
@@ -257,6 +266,7 @@ class BackupRunner:
         # longer than an hour.
         exit_code = -1
         self._failure_reason = None
+        launch_error: Optional[str] = None
         try:
             with subprocess.Popen(
                 ["pkexec", BACKUP_HELPER],
@@ -269,23 +279,38 @@ class BackupRunner:
                 self._stream_output(proc.stdout)
             exit_code = proc.returncode
         except OSError as exc:
-            self._log(f"Could not launch pkexec: {exc}")
+            launch_error = f"Could not launch pkexec: {exc}"
+            self._log(launch_error)
 
+        reason: Optional[str] = None
         if exit_code == 0:
             self._log("Backup completed successfully.")
         elif exit_code == PKEXEC_EXIT_DISMISSED:
-            self._log("Authentication dialog was dismissed — backup not run.")
+            reason = "Authentication dialog was dismissed — backup not run."
+            self._log(reason)
         elif exit_code == PKEXEC_EXIT_NOT_AUTHORIZED:
-            self._log(
+            reason = (
                 "Authentication failed or was denied (pkexec exit 127) — "
                 "check that the package's polkit policy is installed correctly."
             )
+            self._log(reason)
         else:
             self._log(f"Backup finished with exit code {exit_code}.")
+            reason = (
+                self._failure_reason
+                or launch_error
+                or f"Timeshift failed (exit code {exit_code}). See the log for details."
+            )
+
+        # A dismissed password dialog means the helper never ran, so (like a
+        # drive that never mounted) it doesn't replace an earlier failure.
+        if exit_code == 0:
+            last_run.record(last_run.SUCCESS, source="backup-tab")
+        elif exit_code != PKEXEC_EXIT_DISMISSED:
+            last_run.record(last_run.FAILED, reason, source="backup-tab")
 
         return BackupResult(
-            started, datetime.now(), exit_code=exit_code, drive_mounted=True,
-            reason=self._failure_reason if exit_code != 0 else None,
+            started, datetime.now(), exit_code=exit_code, drive_mounted=True, reason=reason,
         )
 
     def _finish(self, result: BackupResult, on_done: Optional[Callable[[BackupResult], None]]) -> None:
