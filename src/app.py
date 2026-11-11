@@ -17,6 +17,8 @@ Timeshift's own job: the Dashboard shows a read-only glance plus an
 from __future__ import annotations
 
 import subprocess
+import sys
+from typing import Callable, Optional
 
 import gi
 
@@ -41,6 +43,9 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.set_default_size(720, 480)
 
         self.runner = BackupRunner()
+        # Set by main.py when there is a tray: called with True when a
+        # backup starts and False when it ends (always on the main thread).
+        self.on_running_changed: Optional[Callable[[bool], None]] = None
 
         notebook = Gtk.Notebook()
         self.add(notebook)
@@ -220,6 +225,14 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.trigger_btn.set_sensitive(False)
         self.status_line.set_text("Backup running...")
         self.runner.start(on_done=self._on_backup_done_from_thread)
+        self._set_running(True)
+
+    def _set_running(self, running: bool) -> None:
+        if self.on_running_changed:
+            try:
+                self.on_running_changed(running)
+            except Exception as exc:  # noqa: BLE001 — a tray problem must never block the window
+                print(f"Timeshift Companion: tray update failed: {exc!r}", file=sys.stderr)
 
     def _on_backup_done_from_thread(self, result) -> None:
         # Called from the worker thread — hop back to the GTK main loop
@@ -227,6 +240,10 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         GLib.idle_add(self._on_backup_done_main_thread, result)
 
     def _on_backup_done_main_thread(self, result) -> bool:
+        # First, so every way a run can end (finished, failed, never started,
+        # dialog dismissed, runner error: BackupRunner._finish is in a
+        # `finally`) puts the tray back to idle.
+        self._set_running(False)
         self.trigger_btn.set_sensitive(True)
         if not result.drive_mounted:
             # No drive set in Timeshift, or the drive never mounted; the
@@ -253,13 +270,19 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
 
     def _notify_backup_done(self, result) -> None:
         """Desktop notification when a backup started from here ends, so a
-        run started from the tray (window hidden) doesn't end unseen. Skipped
-        while the window is in front: the status line is already showing it.
-        Runs that never started (no drive etc.) are explained in the log and
-        aren't notified."""
-        if self.is_active() or not result.drive_mounted:
+        run started from the tray (window hidden) doesn't end unseen.
+        Success and cancelled are skipped while the window is in front (the
+        status line already shows them); a failure always notifies, and is
+        urgent so the desktop keeps it until it is dismissed. A run that
+        never started (no device, drive not mounted) gets a plain notice
+        when the window isn't in front, so the tray going back to idle
+        isn't silent."""
+        failed = result.drive_mounted and not result.success and not result.cancelled
+        if self.is_active() and not failed:
             return
-        if result.success:
+        if not result.drive_mounted:
+            title, body, icon, urgent = "Backup did not run", result.reason or "See the Backup tab's log.", "dialog-warning", False
+        elif result.success:
             title, body, icon, urgent = "Backup completed", "Timeshift On Demand finished the backup.", "drive-harddisk", False
         elif result.cancelled:
             title, body, icon, urgent = "Backup cancelled", result.reason or "", "dialog-warning", False

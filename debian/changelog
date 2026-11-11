@@ -1,3 +1,22 @@
+timeshift-on-demand (0.1.0~dev26) UNRELEASED; urgency=low
+
+  * Tray feedback while a backup runs: the tray's Backup Now item reads
+    "Backup running…" and can't be clicked, and the tray icon switches to
+    AppIndicator's attention state (stock "emblem-synchronizing-symbolic"
+    icon). Both return to normal when the run ends, however it ends
+    (finished, failed, dialog dismissed, never started, runner error). The
+    label, clickability and icon all come from one pure function
+    (src/tray_state.py). Only runs started from the Backup tab or tray are
+    followed; the login/resume prompt has its own window.
+  * Notifications: a failed backup now always notifies (urgent, so the
+    desktop keeps it until dismissed), even when the window is in front.
+    Success and cancelled are still skipped while the window is in front.
+    A run that never started (no device, drive never mounted) gets a plain
+    notice when the window isn't in front, so the tray going back to idle
+    isn't silent.
+
+ -- JShin <11dash11@users.noreply.github.com>  Wed, 11 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev25) UNRELEASED; urgency=low
 
   * Companion no longer has a backup-drive setting of its own. Backups

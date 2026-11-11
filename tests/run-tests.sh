@@ -196,7 +196,7 @@ run_case "13 exit 134, saved line, write error -> stays 134" \
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 
-for t in test_progress test_backup_runner test_status test_last_run test_scheduling test_config test_prompt_settings; do
+for t in test_progress test_backup_runner test_status test_last_run test_tray_state test_app_tray test_scheduling test_config test_prompt_settings; do
     if python3 "$TESTS_DIR/$t.py" >"$WORK/$t.out" 2>&1; then
         printf 'PASS  unit tests: %s\n' "$t"
         pass=$((pass + 1))

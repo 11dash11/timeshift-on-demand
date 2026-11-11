@@ -74,8 +74,11 @@ Timeshift. A failed run says why in plain words, for example that the output
 shows write errors on the backup drive, instead of only an exit code.
 
 If you start a backup from the tray while the window is hidden (or in the
-background), a desktop notification tells you when it finished or failed.
-The login/resume prompt does the same when it finishes.
+background), a desktop notification tells you when it finished. A failure
+always notifies, even with the window in front, and stays on screen until
+you dismiss it. A run that never started (for example, Timeshift has no
+backup device) also gets a short notice. The login/resume prompt notifies
+when it finishes too.
 
 ## Settings tab
 
@@ -117,7 +120,12 @@ why. This tab is read-only and changes nothing:
 If your desktop environment supports AppIndicator (most GNOME-based
 ones do, with the right extension), Companion runs a tray icon with:
 
-- **Backup Now** — same as the Backup tab's button.
+- **Backup Now** — same as the Backup tab's button. While a backup is
+  running (from the tab or the tray) it reads **Backup running…**, can't
+  be clicked, and the tray icon changes to a "syncing" icon; both go back
+  to normal when the run ends, however it ends. This only follows backups
+  started from the tab or the tray. The login/resume prompt has its own
+  window.
 - **Show Window** — brings the main window back (closing the window
   hides it rather than quitting, precisely so the tray/auto-prompts keep
   working).
