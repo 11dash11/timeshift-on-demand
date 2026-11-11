@@ -99,15 +99,15 @@ class BackupRunner:
     to drain new log lines without blocking the UI. `is_running` and
     `result` reflect current state.
 
-    `drive_uuid` may be None if the user hasn't configured a backup drive
-    yet in the Settings tab (see config.py) — `start()` still runs (so
-    "Backup Now" always does *something* observable) but reports
-    immediately rather than waiting on a drive that was never chosen, or
-    invoking pkexec for nothing.
+    The drive waited for is whichever backup device Timeshift itself is
+    configured with (status.get_timeshift_backup_device_uuid()), read at
+    the start of each run, so there is nothing to configure here. If
+    Timeshift has none yet, `start()` still runs (so "Backup Now" always
+    does *something* observable) but says so instead of waiting on a drive
+    or invoking pkexec for nothing.
     """
 
-    def __init__(self, drive_uuid: Optional[str]):
-        self.drive_uuid = drive_uuid
+    def __init__(self):
         self._log_queue: "queue.Queue[str]" = queue.Queue()
         self._thread: Optional[threading.Thread] = None
         self.is_running = False
@@ -177,11 +177,11 @@ class BackupRunner:
         )
         self._thread.start()
 
-    def _wait_for_drive(self) -> Optional[str]:
+    def _wait_for_drive(self, uuid: str) -> Optional[str]:
         from status import find_backup_mount  # local import: sibling module
 
         for attempt in range(1, DRIVE_WAIT_ATTEMPTS + 1):
-            mount = find_backup_mount(self.drive_uuid)
+            mount = find_backup_mount(uuid)
             if mount:
                 self._log(f"Backup drive mounted at {mount}.")
                 return mount
@@ -212,45 +212,28 @@ class BackupRunner:
     def _run_backup(self, started: datetime) -> BackupResult:
         self._log("Backup started.")
 
-        if not self.drive_uuid:
-            self._log("No backup drive configured — open Settings to choose one.")
-            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-
         # Fail fast, before waiting on the drive or spending a pkexec
-        # prompt: confirmed via real testing (Samsung RF511, 2026-08-30)
-        # that Companion's own drive setting and Timeshift's OWN
-        # backup_device_uuid are entirely independent — Companion can
-        # find its configured drive mounted just fine while Timeshift
-        # itself is still unconfigured (or points elsewhere), and the
-        # backup fails with Timeshift's own "Device not found: UUID=..."
-        # with nothing upstream explaining why. This is a pure config
-        # read (no privilege needed), so check it before doing anything
-        # that costs the user time or an authentication prompt.
-        from status import get_timeshift_backup_device_uuid  # local import: sibling module
+        # prompt: a pure config read (no privilege needed). Timeshift's own
+        # backup_device_uuid is the drive the backup goes to, so it is also
+        # the one to wait for. Imported here: sibling module.
+        from status import get_timeshift_backup_device_uuid
 
-        ts_uuid = get_timeshift_backup_device_uuid()
-        if ts_uuid is None:
-            self._log(
+        uuid = get_timeshift_backup_device_uuid()
+        if uuid is None:
+            reason = (
                 "Timeshift itself has no backup device configured yet — open "
                 "Timeshift and complete its setup (pick a backup drive) before "
                 "running an on-demand backup from here."
             )
-            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
-        if ts_uuid != self.drive_uuid:
-            self._log(
-                f"Timeshift is configured to back up to a different device "
-                f"(UUID={ts_uuid}) than the one selected here in Companion's "
-                f"Settings (UUID={self.drive_uuid}) — open Timeshift and "
-                f"repoint its backup device to match, or update Companion's "
-                f"Settings to match Timeshift's, before running an on-demand "
-                f"backup."
-            )
-            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
+            self._log(reason)
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False, reason=reason)
 
-        mount = self._wait_for_drive()
+        mount = self._wait_for_drive(uuid)
         if not mount:
+            minutes = DRIVE_WAIT_ATTEMPTS * DRIVE_WAIT_INTERVAL_S // 60
+            reason = f"The backup drive wasn't mounted after waiting {minutes} minutes."
             self._log("Backup drive not mounted after wait — aborting (non-fatal).")
-            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False)
+            return BackupResult(started, datetime.now(), exit_code=0, drive_mounted=False, reason=reason)
 
         self._log(f"Running {BACKUP_HELPER} via pkexec ...")
         # Streamed line by line (text mode also splits on timeshift's \r

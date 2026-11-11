@@ -53,15 +53,6 @@ class DiskUsage:
     error: Optional[str] = None
 
 
-@dataclass
-class DriveInfo:
-    uuid: str
-    label: Optional[str]
-    mountpoint: Optional[str]
-    size: Optional[str]
-    removable: bool
-
-
 def _run(cmd: list[str], timeout: int = 15) -> subprocess.CompletedProcess:
     return subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout, check=False
@@ -120,8 +111,8 @@ def get_backup_drive_usage(mount_point: str) -> DiskUsage:
     """
     Disk usage for the backup drive. Pass in the mount point (e.g.
     resolved via find_backup_mount() at call time) — this module doesn't
-    hardcode a UUID, it's the caller's job to know which drive the user
-    configured in the Settings tab (see config.py).
+    hardcode a UUID, it's the caller's job to know which drive Timeshift
+    is configured to use (get_timeshift_backup_device_uuid()).
     """
     try:
         usage = shutil.disk_usage(mount_point)
@@ -173,72 +164,25 @@ TIMESHIFT_CONFIG = Path("/etc/timeshift/timeshift.json")
 
 def get_timeshift_backup_device_uuid() -> Optional[str]:
     """
-    Timeshift's OWN configured backup device UUID — a completely separate
-    setting from Companion's own config.json (see config.py). Confirmed
-    via real testing (Samsung RF511, 2026-08-30): Companion's Settings tab
-    only controls which drive *Companion* waits for before attempting a
-    backup — it has no effect on what Timeshift itself will actually try
-    to write to. A fresh Timeshift install (or one repointed at a
-    different device) can have this set to nothing, or to a UUID that
-    doesn't match what's configured in Companion, and the on-demand
-    backup will fail with Timeshift's own "Device not found: UUID=..."
-    error — confusing if nothing upstream explains why.
+    The UUID of the backup device Timeshift itself is configured with, which
+    is where every backup goes and so the only drive Companion needs to wait
+    for. (Older versions had a separate drive setting of their own, and the
+    two could disagree: confirmed on the Samsung RF511, 2026-08-30, the
+    backup then failed with Timeshift's "Device not found: UUID=...".)
 
-    /etc/timeshift/timeshift.json is world-readable (644) — no privilege
-    needed. Returns None if the config is missing/unreadable or the field
-    is empty (Timeshift never configured, e.g. its first-run setup wasn't
-    completed yet).
+    /etc/timeshift/timeshift.json is world-readable (644), so no privilege
+    is needed. Returns None if the config is missing, unreadable or not a
+    JSON object, or the field is empty or not a string (Timeshift never
+    configured, e.g. its first-run setup wasn't completed).
     """
-    data = _timeshift_config()
-    return (data or {}).get("backup_device_uuid") or None
+    uuid = (_timeshift_config() or {}).get("backup_device_uuid")
+    return uuid if isinstance(uuid, str) and uuid else None
 
 
 def _timeshift_config() -> Optional[dict]:
     """/etc/timeshift/timeshift.json (world-readable), or None if missing/unreadable."""
     try:
-        return json.loads(TIMESHIFT_CONFIG.read_text(encoding="utf-8"))
-    except (FileNotFoundError, PermissionError, json.JSONDecodeError):
+        data = json.loads(TIMESHIFT_CONFIG.read_text(encoding="utf-8"))
+    except (OSError, ValueError):  # includes missing, unreadable, bad JSON/UTF-8
         return None
-
-
-def list_candidate_drives() -> list[DriveInfo]:
-    """
-    Block devices with a filesystem UUID, for the Settings tab's drive
-    picker. Deliberately includes both removable and fixed drives — some
-    users back up to a fixed secondary internal drive, not just an
-    external one — the `removable` flag lets the UI label them, not
-    filter them out.
-    """
-    try:
-        result = _run(["lsblk", "-J", "-o", "NAME,UUID,LABEL,MOUNTPOINT,RM,SIZE,FSTYPE"])
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return []
-
-    try:
-        data = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return []
-
-    drives: list[DriveInfo] = []
-
-    def walk(devices: list[dict]) -> None:
-        for dev in devices:
-            uuid = dev.get("uuid")
-            # Confirmed on this machine: an unfiltered list includes the
-            # swap partition (it has a UUID like any other filesystem) —
-            # never a valid backup target, so exclude it explicitly
-            # rather than relying on the user to not pick it.
-            if uuid and dev.get("fstype") != "swap":
-                drives.append(
-                    DriveInfo(
-                        uuid=uuid,
-                        label=dev.get("label"),
-                        mountpoint=dev.get("mountpoint"),
-                        size=dev.get("size"),
-                        removable=bool(dev.get("rm")),
-                    )
-                )
-            walk(dev.get("children") or [])
-
-    walk(data.get("blockdevices", []))
-    return drives
+    return data if isinstance(data, dict) else None

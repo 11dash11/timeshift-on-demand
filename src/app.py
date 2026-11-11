@@ -6,10 +6,10 @@ spawned terminal monitor, timeshift-status.sh output, and the cron
 check script) into one window. No time-window restriction — the
 Backup tab's trigger button is always enabled.
 
-The backup drive is no longer a hardcoded UUID (that assumed this one
-machine) — it's read from config.py, set via the Settings tab. If unset,
-the Backup tab still works (the button is always clickable) but reports
-"no drive configured" instead of guessing one. Snapshot management stays
+There is no drive setting of its own: backups go to whichever device
+Timeshift is configured with, which the Dashboard shows. If Timeshift has
+none yet, the Backup tab still works (the button is always clickable) but
+says so instead of guessing one. Snapshot management stays
 Timeshift's own job: the Dashboard shows a read-only glance plus an
 "Open Timeshift" button, no delete/restore capability here.
 """
@@ -40,7 +40,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         super().__init__(application=app, title="Timeshift On Demand")
         self.set_default_size(720, 480)
 
-        self.runner = BackupRunner(config.load_settings().backup_drive_uuid)
+        self.runner = BackupRunner()
 
         notebook = Gtk.Notebook()
         self.add(notebook)
@@ -148,14 +148,16 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.snapshot_label.set_text(text)
 
     def _refresh_drive_status(self) -> None:
-        drive_uuid = config.load_settings().backup_drive_uuid
+        drive_uuid = status.get_timeshift_backup_device_uuid()
         if not drive_uuid:
-            self.disk_label.set_text("Backup drive: not configured — see the Settings tab")
+            self.disk_label.set_text(
+                "Backup drive: Timeshift has no backup device set yet — open Timeshift and finish its setup"
+            )
             return
 
         mount = status.find_backup_mount(drive_uuid)
         if not mount:
-            self.disk_label.set_text(f"Backup drive ({drive_uuid}): not currently mounted")
+            self.disk_label.set_text(f"Backup drive (Timeshift's, {drive_uuid}): not currently mounted")
             return
 
         usage = status.get_backup_drive_usage(mount)
@@ -227,16 +229,12 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
     def _on_backup_done_main_thread(self, result) -> bool:
         self.trigger_btn.set_sensitive(True)
         if not result.drive_mounted:
-            if not self.runner.drive_uuid:
-                self.status_line.set_text("No backup drive configured — see the Settings tab.")
-            else:
-                # Covers "drive not mounted", "Timeshift itself has no
-                # backup device configured", and "Companion/Timeshift
-                # device UUIDs don't match" — all three set
-                # drive_mounted=False; the exact reason is already in the
-                # log view above, no need to guess at one specific reason
-                # here and risk stating the wrong one.
-                self.status_line.set_text("Backup did not run — see the log above for why.")
+            # No drive set in Timeshift, or the drive never mounted; the
+            # runner says which, and the log above has the details.
+            self.status_line.set_text(
+                f"Backup did not run: {result.reason}" if result.reason
+                else "Backup did not run — see the log above for why."
+            )
         elif result.success:
             self.status_line.set_text("Backup completed successfully.")
         elif result.cancelled:
@@ -289,28 +287,19 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.set_border_width(12)
 
-        box.pack_start(Gtk.Label(label="Backup drive:", xalign=0), False, False, 0)
-
-        self.drive_combo = Gtk.ComboBoxText()
-        box.pack_start(self.drive_combo, False, False, 0)
-
-        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        refresh_btn = Gtk.Button(label="Refresh List")
-        refresh_btn.connect("clicked", lambda *_: self._populate_drive_combo())
-        save_btn = Gtk.Button(label="Save Selection")
-        save_btn.connect("clicked", self._on_save_drive_clicked)
-        clear_btn = Gtk.Button(label="Clear")
-        clear_btn.connect("clicked", self._on_clear_drive_clicked)
-        for w in (refresh_btn, save_btn, clear_btn):
-            btn_row.pack_start(w, False, False, 0)
-        box.pack_start(btn_row, False, False, 0)
-
-        self.settings_status_label = Gtk.Label(label="", xalign=0)
-        self.settings_status_label.set_line_wrap(True)
-        box.pack_start(self.settings_status_label, False, False, 0)
-
-        self._drive_uuids_by_index: list[str] = []
-        self._populate_drive_combo()
+        # No drive picker: backups go to the device Timeshift itself is set
+        # up with (shown on the Dashboard), so there is only one place to
+        # choose it.
+        note = Gtk.Label(
+            label=(
+                "Backups go to the drive chosen in Timeshift (Settings → Location). "
+                "The Dashboard shows its status; use “Open Timeshift” there to change it."
+            ),
+            xalign=0,
+        )
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("dim-label")
+        box.pack_start(note, False, False, 0)
 
         box.pack_start(Gtk.Separator(), False, False, 6)
         box.pack_start(
@@ -340,45 +329,6 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             self.prompt_status_label.set_text("")
         except OSError as exc:
             self.prompt_status_label.set_text(f"Couldn't save this setting: {exc}")
-
-    def _populate_drive_combo(self) -> None:
-        self.drive_combo.remove_all()
-        self._drive_uuids_by_index = []
-
-        for d in status.list_candidate_drives():
-            kind = "removable" if d.removable else "fixed"
-            mount = d.mountpoint or "not mounted"
-            label = d.label or "(no label)"
-            self.drive_combo.append_text(f"{label} — {d.size or '?'} ({kind}) [{mount}] — {d.uuid}")
-            self._drive_uuids_by_index.append(d.uuid)
-
-        current = config.load_settings().backup_drive_uuid
-        if current and current in self._drive_uuids_by_index:
-            self.drive_combo.set_active(self._drive_uuids_by_index.index(current))
-            self.settings_status_label.set_text(f"Currently configured: {current}")
-        elif current:
-            self.settings_status_label.set_text(
-                f"Currently configured: {current} (not currently detected — plug it in, then Refresh)"
-            )
-        else:
-            self.settings_status_label.set_text("No backup drive configured yet — pick one above and Save.")
-
-    def _on_save_drive_clicked(self, *_args) -> None:
-        idx = self.drive_combo.get_active()
-        if idx < 0 or idx >= len(self._drive_uuids_by_index):
-            self.settings_status_label.set_text("Pick a drive from the list first.")
-            return
-        uuid = self._drive_uuids_by_index[idx]
-        config.update_settings(backup_drive_uuid=uuid)
-        self.runner.drive_uuid = uuid
-        self.settings_status_label.set_text(f"Saved. Backup drive set to: {uuid}")
-        self._refresh_drive_status()
-
-    def _on_clear_drive_clicked(self, *_args) -> None:
-        config.update_settings(backup_drive_uuid=None)
-        self.runner.drive_uuid = None
-        self.settings_status_label.set_text("Cleared — no backup drive configured.")
-        self._refresh_drive_status()
 
     # ------------------------------------------------------------------
     # Maintenance tab

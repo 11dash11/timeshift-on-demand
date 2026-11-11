@@ -79,18 +79,14 @@ It opens on the **Dashboard** tab:
 
 ![Dashboard tab](images/dashboard.png)
 
-Before anything else, go to **Settings** and pick your backup drive:
+Companion backs up to whichever drive Timeshift itself is set up with, so
+there's nothing to pick in Companion. The Dashboard shows that drive (and
+says so if Timeshift has no backup device yet; see
+[troubleshooting.md](troubleshooting.md#timeshift-has-no-backup-device-set)).
+
+The **Settings** tab only holds the two login/resume prompt checkboxes:
 
 ![Settings tab](images/settings.png)
-
-This is Companion's *own* setting — which drive it should wait for
-before attempting a backup. It's independent of Timeshift's own
-configured device (see [installation](#before-you-install-set-up-timeshift-itself-first)
-above) — both need to point at the same drive for a backup to actually
-succeed. If they don't match, Companion tells you clearly rather than
-attempting a doomed backup — see
-[troubleshooting.md](troubleshooting.md#timeshift-is-configured-to-back-up-to-a-different-device)
-if you hit that.
 
 ## Auto-prompts (optional, on by default)
 
