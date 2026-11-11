@@ -9,6 +9,15 @@ This walks through all of them.
 
 A read-only glance:
 
+- **Last backup** — the first line, because it answers "did my last backup
+  work?": succeeded or **FAILED**, when, whether it was started
+  from the Backup tab or the login/resume prompt, and for a failure the
+  reason in plain words. It covers runs that actually started the backup;
+  a run that never got going (drive not plugged in, you answered No at
+  the prompt, or you dismissed the password dialog) leaves it unchanged, so
+  a failure keeps showing until a backup succeeds. A backup can leave a
+  plausible-looking snapshot behind and still have failed, so check this
+  line rather than the snapshot list.
 - **Snapshots** — total count, the latest snapshot and its current
   Timeshift tag, read straight from Timeshift's snapshot folders on the
   backup drive. No password needed; the drive just has to be mounted.
@@ -62,6 +71,10 @@ still lands in Timeshift's own logs.
 A completed run shows the outcome and the drive gets a fresh snapshot in
 Timeshift. A failed run says why in plain words, for example that the output
 shows write errors on the backup drive, instead of only an exit code.
+
+If you start a backup from the tray while the window is hidden (or in the
+background), a desktop notification tells you when it finished or failed.
+The login/resume prompt does the same when it finishes.
 
 ## Settings tab
 

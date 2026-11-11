@@ -21,9 +21,10 @@ import subprocess
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 import config  # noqa: E402
+import last_run  # noqa: E402
 import scheduling  # noqa: E402
 import status  # noqa: E402
 from backup_runner import BackupRunner  # noqa: E402
@@ -82,6 +83,10 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.set_border_width(12)
 
+        # First, because it answers the question the app exists for: did
+        # the last backup work? (See last_run.py.)
+        self.last_run_label = Gtk.Label(label="", xalign=0)
+        self.last_run_label.set_line_wrap(True)
         self.snapshot_label = Gtk.Label(label="Loading snapshot history...", xalign=0)
         self.disk_label = Gtk.Label(label="Loading disk usage...", xalign=0)
 
@@ -108,7 +113,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         btn_row.pack_start(refresh_btn, False, False, 0)
         btn_row.pack_start(open_ts_btn, False, False, 0)
 
-        for w in (self.snapshot_label, self.disk_label, btn_row, advisory):
+        for w in (self.last_run_label, self.snapshot_label, self.disk_label, btn_row, advisory):
             box.pack_start(w, False, False, 0)
 
         return box
@@ -119,8 +124,16 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         (see status.get_snapshots()), so this runs on window open, Refresh,
         after a backup, and from the 30s auto-refresh timer.
         """
+        self._refresh_last_run()
         self._refresh_snapshot_info()
         self._refresh_drive_status()
+
+    def _refresh_last_run(self) -> None:
+        last = last_run.load()
+        text = GLib.markup_escape_text(last_run.describe(last))
+        if last is not None and last.outcome == last_run.FAILED:
+            text = f"<b>{text}</b>"
+        self.last_run_label.set_markup(text)
 
     def _refresh_snapshot_info(self) -> None:
         snaps = status.get_snapshots()
@@ -226,6 +239,8 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
                 self.status_line.set_text("Backup did not run — see the log above for why.")
         elif result.success:
             self.status_line.set_text("Backup completed successfully.")
+        elif result.cancelled:
+            self.status_line.set_text(f"Backup cancelled: {result.reason}")
         else:
             # The helper's own sentence when it gave one; the bare code
             # only for failures it never got to explain (e.g. pkexec's).
@@ -235,7 +250,30 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             )
 
         self.refresh_dashboard()
+        self._notify_backup_done(result)
         return False  # one-shot idle call
+
+    def _notify_backup_done(self, result) -> None:
+        """Desktop notification when a backup started from here ends, so a
+        run started from the tray (window hidden) doesn't end unseen. Skipped
+        while the window is in front: the status line is already showing it.
+        Runs that never started (no drive etc.) are explained in the log and
+        aren't notified."""
+        if self.is_active() or not result.drive_mounted:
+            return
+        if result.success:
+            title, body, icon, urgent = "Backup completed", "Timeshift On Demand finished the backup.", "drive-harddisk", False
+        elif result.cancelled:
+            title, body, icon, urgent = "Backup cancelled", result.reason or "", "dialog-warning", False
+        else:
+            title, body, icon, urgent = "Backup FAILED", result.reason or "See the Backup tab's log.", "dialog-error", True
+        note = Gio.Notification.new(f"Timeshift On Demand — {title}")
+        note.set_body(body)
+        note.set_icon(Gio.ThemedIcon.new(icon))
+        if urgent:
+            note.set_priority(Gio.NotificationPriority.URGENT)
+        # One id, so a newer result replaces the older notification.
+        self.get_application().send_notification("backup-result", note)
 
     def _on_log_poll_tick(self) -> bool:
         # Progress lines replace each other in place; everything else is

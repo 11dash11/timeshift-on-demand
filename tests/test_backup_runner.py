@@ -4,10 +4,13 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 import backup_runner  # noqa: E402
+import last_run  # noqa: E402
 
 
 class StreamTests(unittest.TestCase):
@@ -58,6 +61,90 @@ class StreamTests(unittest.TestCase):
     def test_no_marker_means_no_reason(self):
         self.r._stream_output(["Syncing", "Done"])
         self.assertIsNone(self.r._failure_reason)
+
+
+class RunBackupOutcomeTests(unittest.TestCase):
+    """_run_backup end to end with a fake pkexec; checks the result and the
+    last-run record both paths feed the Dashboard from."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        backup_runner.LOGFILE = Path(self.tmp.name) / "backup.log"
+        self._old = os.environ.get("XDG_DATA_HOME")
+        os.environ["XDG_DATA_HOME"] = self.tmp.name
+        import status
+        self.patches = [
+            mock.patch.object(status, "get_timeshift_backup_device_uuid", return_value="u"),
+            mock.patch.object(status, "find_backup_mount", return_value="/mnt/b"),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        if self._old is None:
+            os.environ.pop("XDG_DATA_HOME", None)
+        else:
+            os.environ["XDG_DATA_HOME"] = self._old
+        self.tmp.cleanup()
+
+    def run_with(self, output, code):
+        proc = mock.MagicMock()
+        proc.__enter__.return_value = proc
+        proc.stdout = iter(output)
+        proc.returncode = code
+        with mock.patch.object(backup_runner.subprocess, "Popen", return_value=proc):
+            return backup_runner.BackupRunner("u")._run_backup(datetime.now())
+
+    def test_success_recorded(self):
+        r = self.run_with(["ok\n"], 0)
+        self.assertTrue(r.success)
+        self.assertIsNone(r.reason)
+        self.assertEqual(last_run.load().outcome, "success")
+
+    def test_failure_uses_helper_reason(self):
+        r = self.run_with(["x\n", "\n", "BACKUP-FAILED: Check the drive.\n"], 1)
+        self.assertEqual(r.reason, "Check the drive.")
+        got = last_run.load()
+        self.assertEqual((got.outcome, got.reason, got.source), ("failed", "Check the drive.", "backup-tab"))
+
+    def test_failure_without_helper_reason_still_gets_a_sentence(self):
+        r = self.run_with(["boom\n"], 3)
+        self.assertIn("exit code 3", r.reason)
+        self.assertEqual(last_run.load().outcome, "failed")
+
+    def test_dismissed_dialog_is_cancelled_and_leaves_the_record_alone(self):
+        last_run.record(last_run.FAILED, "Check the drive.", source="prompt")
+        r = self.run_with([], 126)
+        self.assertTrue(r.cancelled)
+        self.assertIn("dismissed", r.reason)
+        got = last_run.load()  # the earlier failure must still be showing
+        self.assertEqual((got.outcome, got.reason), ("failed", "Check the drive."))
+
+    def test_denied_is_failed_with_sentence(self):
+        r = self.run_with([], 127)
+        self.assertFalse(r.cancelled)
+        self.assertIn("denied", r.reason)
+        self.assertEqual(last_run.load().outcome, "failed")
+
+    def test_run_that_never_started_leaves_record_alone(self):
+        last_run.record(last_run.SUCCESS, source="prompt")
+        with mock.patch("status.find_backup_mount", return_value=None), \
+                mock.patch.object(backup_runner, "DRIVE_WAIT_ATTEMPTS", 1), \
+                mock.patch.object(backup_runner, "DRIVE_WAIT_INTERVAL_S", 0):
+            r = backup_runner.BackupRunner("u")._run_backup(datetime.now())
+        self.assertFalse(r.drive_mounted)
+        got = last_run.load()
+        self.assertEqual((got.outcome, got.source), ("success", "prompt"))
+
+    def test_runner_error_recorded_as_failed(self):
+        r = backup_runner.BackupRunner("u")
+        with mock.patch.object(r, "_run_backup", side_effect=RuntimeError("boom")):
+            r._run(None)
+        self.assertEqual(r.result.exit_code, -1)
+        self.assertIn("boom", r.result.reason)
+        self.assertEqual(last_run.load().outcome, "failed")
 
 
 if __name__ == "__main__":
