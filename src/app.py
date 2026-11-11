@@ -227,7 +227,12 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         elif result.success:
             self.status_line.set_text("Backup completed successfully.")
         else:
-            self.status_line.set_text(f"Backup failed (exit code {result.exit_code}).")
+            # The helper's own sentence when it gave one; the bare code
+            # only for failures it never got to explain (e.g. pkexec's).
+            self.status_line.set_text(
+                f"Backup failed: {result.reason}" if result.reason
+                else f"Backup failed (exit code {result.exit_code})."
+            )
 
         self.refresh_dashboard()
         return False  # one-shot idle call

@@ -60,7 +60,8 @@ still lands in Timeshift's own logs.
 ![Backup tab, done](images/backup-done.png)
 
 A completed run shows the outcome and the drive gets a fresh snapshot in
-Timeshift.
+Timeshift. A failed run says why in plain words, for example that the output
+shows write errors on the backup drive, instead of only an exit code.
 
 ## Settings tab
 

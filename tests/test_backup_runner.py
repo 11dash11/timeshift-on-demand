@@ -50,6 +50,15 @@ class StreamTests(unittest.TestCase):
         self.r._stream_output(["", "   ", "7.00% complete (q remaining)", "ok"])
         self.assertEqual(self.file_lines(), ["7.00% complete (q remaining)", "ok"])
 
+    def test_failure_reason_captured_from_marker_line(self):
+        self.r._stream_output(["Syncing", "", "BACKUP-FAILED: Check the drive.", ""])
+        self.assertEqual(self.r._failure_reason, "Check the drive.")
+        self.assertIn("BACKUP-FAILED: Check the drive.", self.file_lines())  # still logged
+
+    def test_no_marker_means_no_reason(self):
+        self.r._stream_output(["Syncing", "Done"])
+        self.assertIsNone(self.r._failure_reason)
+
 
 if __name__ == "__main__":
     unittest.main()

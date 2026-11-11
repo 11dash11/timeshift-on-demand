@@ -95,7 +95,9 @@ fi
 # it's actually mountable (observed up to 129s on 2026-08-31).
 BACKUP_MOUNT_POINT=""
 for i in {1..36}; do
-    BACKUP_MOUNT_POINT=$(findmnt -nr -S UUID="$DRIVE_UUID" -o TARGET)
+    # Timeshift mounts the drive again at /run/timeshift/<pid>/backup
+    # during a run; ignore that one and take the first real mount.
+    BACKUP_MOUNT_POINT=$(findmnt -nr -S UUID="$DRIVE_UUID" -o TARGET | grep -v '^/run/timeshift/' | head -n 1)
     if [[ -n "$BACKUP_MOUNT_POINT" ]]; then
         log_info "Backup drive mounted at $BACKUP_MOUNT_POINT."
         break
@@ -136,6 +138,9 @@ python3 "$GUI_MONITOR" "$LOGFILE" "$DONEFLAG" &
 MONITOR_LAUNCHED=true
 
 log_info "Running backup helper via pkexec..."
+# Where this run's output starts, so the failure reason below comes from
+# this run and not an earlier one in the same log.
+RUN_START=$(stat -c %s "$LOGFILE" 2>/dev/null || echo 0)
 ionice -c2 -n7 nice -n10 pkexec "$BACKUP_HELPER" >> "$LOGFILE" 2>&1
 ts_status=$?
 
@@ -161,9 +166,19 @@ elif [[ $ts_status -eq 127 ]]; then
     notify-send -u critical -i dialog-error "Timeshift On Demand" \
         "Backup not authorized — check the polkit policy is installed correctly." 2>/dev/null
 else
-    log_error "Backup finished with exit code $ts_status."
-    notify-send -u critical -i dialog-error "Timeshift On Demand — Backup FAILED" \
-        "Exit code $ts_status — check $LOGFILE" 2>/dev/null
+    # The helper ends a failure with "BACKUP-FAILED: <reason>" (progress
+    # fragments can share its line, hence -a and the unanchored match).
+    reason=$(tail -c +"$((RUN_START + 1))" "$LOGFILE" 2>/dev/null \
+        | grep -ao 'BACKUP-FAILED: .*' | tail -n 1 | sed 's/^BACKUP-FAILED: //')
+    if [[ -n "$reason" ]]; then
+        log_error "Backup failed (exit code $ts_status): $reason"
+        notify-send -u critical -i dialog-error "Timeshift On Demand — Backup FAILED" \
+            "$reason Log: $LOGFILE" 2>/dev/null
+    else
+        log_error "Backup finished with exit code $ts_status."
+        notify-send -u critical -i dialog-error "Timeshift On Demand — Backup FAILED" \
+            "Exit code $ts_status — check $LOGFILE" 2>/dev/null
+    fi
 fi
 
 log_info "Prompt script finished"

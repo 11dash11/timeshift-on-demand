@@ -158,8 +158,14 @@ def find_backup_mount(uuid: Optional[str]) -> Optional[str]:
         result = _run(["findmnt", "-nr", "-S", f"UUID={uuid}", "-o", "TARGET"])
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
-    target = result.stdout.strip()
-    return target or None
+    # Timeshift mounts the drive a second time at /run/timeshift/<pid>/backup
+    # while it runs, so findmnt can print two lines. Take the first
+    # target that isn't one of those.
+    for line in result.stdout.splitlines():
+        target = line.strip()
+        if target and not target.startswith("/run/timeshift/"):
+            return target
+    return None
 
 
 TIMESHIFT_CONFIG = Path("/etc/timeshift/timeshift.json")
