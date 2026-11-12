@@ -118,8 +118,8 @@ class MonitorWindow(Gtk.Window):
             if st.st_size < self._log_pos or (
                 self._log_ino is not None and st.st_ino != self._log_ino
             ):
-                # The log was trimmed/replaced (it is cut to its last 256 KiB
-                # once past 1 MiB). Old offsets mean nothing now; continue
+                # The log was trimmed/replaced (it is cut to its last 5 MiB
+                # once past 10 MiB). Old offsets mean nothing now; continue
                 # from the end rather than replaying old history.
                 self._log_pos = st.st_size
                 self.filter.reset()

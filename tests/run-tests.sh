@@ -193,6 +193,32 @@ run_case "13 exit 134, saved line, write error -> stays 134" \
     abort-saved-write-error 134 no \
     "Exit 134 but output shows a real failure"
 
+# Exit codes 126/127 from Timeshift (really the shell: missing or
+# non-executable binary) must not reach the callers as-is: they read those
+# as pkexec's "dialog dismissed" / "not authorized".
+run_case "14 exit 127 (timeshift can't be started) -> 1, never 127" \
+    exit-127 1 no "" "Timeshift could not be started (is it installed?). Exit code 127."
+
+run_case "15 exit 126 (timeshift can't be executed) -> 1, never 126" \
+    exit-126 1 no "" "Timeshift could not be run (exit code 126)"
+
+# The realistic trigger: no timeshift binary at all (stdbuf exits 127).
+missing_helper="$WORK/helper-missing-timeshift"
+sed 's#/usr/bin/timeshift#/nonexistent/timeshift#g' "$HELPER" > "$missing_helper"
+chmod +x "$missing_helper"
+missing_tmp="$WORK/missing-tmp"; mkdir -p "$missing_tmp"
+missing_exit=0
+TMPDIR="$missing_tmp" "$missing_helper" > "$WORK/missing.out" 2>&1 || missing_exit=$?
+if [[ "$missing_exit" -eq 1 ]] \
+   && [[ "$(tail -n 1 "$WORK/missing.out")" == "BACKUP-FAILED: Timeshift could not be started"* ]]; then
+    printf 'PASS  %s\n' "16 timeshift binary missing -> 1 with a clear reason"
+    pass=$((pass + 1))
+else
+    printf 'FAIL  %s\n' "16 timeshift binary missing -> 1 with a clear reason"
+    printf '        - exit %s, output:\n' "$missing_exit"; sed 's/^/        | /' "$WORK/missing.out"
+    fail=$((fail + 1))
+fi
+
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 

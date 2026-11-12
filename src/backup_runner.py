@@ -44,8 +44,8 @@ LOGFILE = _data_dir() / "backup.log"
 BACKUP_HELPER = "/usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper"
 # Past LOG_MAX_BYTES, keep only the last LOG_KEEP_BYTES (checked at the
 # start of each run). Same limits as timeshift-on-demand-prompt.
-LOG_MAX_BYTES = 1024 * 1024
-LOG_KEEP_BYTES = 256 * 1024
+LOG_MAX_BYTES = 10 * 1024 * 1024
+LOG_KEEP_BYTES = 5 * 1024 * 1024
 DRIVE_WAIT_ATTEMPTS = 36
 DRIVE_WAIT_INTERVAL_S = 5
 

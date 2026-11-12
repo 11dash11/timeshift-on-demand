@@ -137,6 +137,9 @@ do_create() {
             echo "E: Failed to create file /run/timeshift/12345/backup/timeshift/snapshots/x/info.json.AB: Permission denied"
             saved_ok; gobject_abort
             exit 134 ;;
+        exit-126|exit-127)
+            # what the shell reports when it can't run timeshift at all
+            exit "${FAKE_TIMESHIFT_SCENARIO#exit-}" ;;
         generic-fail)
             echo "E: Failed to mount device '/dev/sdb1' at '/run/timeshift/12345/backup'"
             exit 1 ;;
