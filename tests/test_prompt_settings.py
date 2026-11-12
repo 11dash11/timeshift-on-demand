@@ -110,6 +110,43 @@ class PromptTests(unittest.TestCase):
         self.assertIn("Timeshift has no backup device configured", self.log.read_text())
 
 
+class PromptTrimTests(PromptTests):
+    """The prompt script trims backup.log past 10 MiB to its last 5 MiB.
+    Sparse files, so the tests don't write 10 MiB of real data."""
+
+    MAX, KEEP = 10 * 1024 * 1024, 5 * 1024 * 1024
+
+    def make_log(self, size, tail=b"TAILMARK\n"):
+        self.log.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.log, "wb") as f:
+            f.truncate(size - len(tail))
+            f.seek(0, os.SEEK_END)
+            f.write(tail)
+
+    def run_off(self):
+        # prompt_on_login off: stops right after the trim, before any wait
+        self.run_prompt({"prompt_on_login": False}, "--login")
+
+    def test_over_10_mib_is_cut_to_the_last_5_mib(self):
+        self.make_log(self.MAX + 1)
+        self.run_off()
+        data = self.log.read_bytes()
+        self.assertLess(len(data), self.KEEP + 4096)       # 5 MiB plus this run's own lines
+        self.assertGreater(len(data), self.KEEP - 4096)
+        self.assertIn(b"TAILMARK", data)                   # the newest end is what's kept
+        self.assertIn(b"Prompt script started", data)
+
+    def test_at_exactly_10_mib_is_left_alone(self):
+        self.make_log(self.MAX)
+        self.run_off()
+        self.assertGreaterEqual(self.log.stat().st_size, self.MAX)
+
+    def test_a_5_mib_log_is_not_touched(self):
+        self.make_log(self.KEEP)
+        self.run_off()
+        self.assertGreaterEqual(self.log.stat().st_size, self.KEEP)
+
+
 class PromptMountTests(PromptTests):
     """Drive lookup with Timeshift's own /run/timeshift mount present."""
 
@@ -200,6 +237,16 @@ class PromptFailureTests(PromptTests):
              "reason": "earlier failure", "source": "prompt"}))
         self.run_failing("", 126)
         self.assertEqual(self.recorded()["reason"], "earlier failure")
+
+    def test_helper_unable_to_start_timeshift_is_a_failure_not_a_cancel(self):
+        # The helper turns the shell's 127 into exit 1 plus this reason
+        # (see the helper), so it is recorded and notified as a failure.
+        out = self.run_failing(
+            "BACKUP-FAILED: Timeshift could not be started (is it installed?). Exit code 127.\\n", 1)
+        got = self.recorded()
+        self.assertEqual(got["outcome"], "failed")
+        self.assertIn("could not be started", got["reason"])
+        self.assertIn("could not be started", out)
 
     def test_no_reason_falls_back_to_exit_code(self):
         out = self.run_failing("boom\\n", 3)

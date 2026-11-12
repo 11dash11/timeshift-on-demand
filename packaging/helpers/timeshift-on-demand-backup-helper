@@ -104,7 +104,9 @@ failure_re='Failed to create (new )?snapshot|rsync returned an error|Input/outpu
 
 # Timeshift can exit 0, and even say the snapshot was saved, after writes
 # to the drive failed. Report that as a failure (1: not one of pkexec's
-# 126/127), so the Backup tab and the prompt don't call it a success.
+# 126/127, which the callers read as "dialog dismissed" / "not authorized"
+# and so must only ever come from pkexec itself), so the Backup tab and the
+# prompt don't call it a success.
 if [[ "$ts_status" -eq 0 ]] && grep -qE "$failure_re" <<< "$output"; then
     echo "Timeshift exited 0 but its output shows write errors (see above) - treating as failure. Check the backup drive, and don't rely on this snapshot."
     fail 1 "Timeshift reported success, but its output shows write errors. Check the backup drive and don't rely on this snapshot."
@@ -150,6 +152,13 @@ fi
 
 if [[ "$ts_status" -ne 0 ]]; then
     case "$ts_status" in
+        # 126/127 here come from the shell, not from Timeshift's own logic:
+        # stdbuf/bash exit 127 when the timeshift binary is missing and 126
+        # when it can't be executed. Passed through, the callers would read
+        # them as pkexec's "not authorized" / "dialog dismissed" (and 126
+        # would go unrecorded as a failure), so report them as 1.
+        126) fail 1 "Timeshift could not be run (exit code 126). See the log for details." ;;
+        127) fail 1 "Timeshift could not be started (is it installed?). Exit code 127." ;;
         134|139) fail "$ts_status" "Timeshift crashed before saving the snapshot (exit code $ts_status). See the log for details." ;;
         *)       fail "$ts_status" "Timeshift failed (exit code $ts_status). See the log for details." ;;
     esac

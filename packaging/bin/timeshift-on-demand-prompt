@@ -37,10 +37,10 @@ TIMESHIFT_CONFIG="/etc/timeshift/timeshift.json"
 mkdir -p "$(dirname "$LOGFILE")"
 
 # Keep the log from growing forever (each run appends thousands of
-# progress fragments): past 1 MiB, keep the last 256 KiB. Same limits as
+# progress fragments): past 10 MiB, keep the last 5 MiB. Same limits as
 # src/backup_runner.py.
-if [[ -f "$LOGFILE" && $(stat -c %s "$LOGFILE") -gt 1048576 ]]; then
-    tail -c 262144 "$LOGFILE" > "$LOGFILE.tmp" && mv "$LOGFILE.tmp" "$LOGFILE"
+if [[ -f "$LOGFILE" && $(stat -c %s "$LOGFILE") -gt 10485760 ]]; then
+    tail -c 5242880 "$LOGFILE" > "$LOGFILE.tmp" && mv "$LOGFILE.tmp" "$LOGFILE"
 fi
 
 log() {

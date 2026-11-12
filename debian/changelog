@@ -1,3 +1,20 @@
+timeshift-on-demand (0.1.0~dev27) UNRELEASED; urgency=low
+
+  * Backup helper: exit codes 126 and 127 can now only come from pkexec.
+    If /usr/bin/timeshift is missing or not executable, the shell reports
+    127 or 126, and the helper used to pass that through, so the callers
+    read it as "not authorized" or as a dismissed password dialog (which
+    is not recorded as a failure). The helper now exits 1 with a plain
+    "Timeshift could not be started (is it installed?)" / "could not be
+    run" reason that names the real code.
+  * backup.log: trimmed at 10 MiB instead of 1 MiB, and cut back to its
+    last 5 MiB instead of 256 KiB, so a trim no longer drops most of the
+    history and a few runs' worth of progress lines don't trigger it (both
+    in src/backup_runner.py and in the prompt script). Trimming otherwise
+    works as before.
+
+ -- JShin <11dash11@users.noreply.github.com>  Thu, 12 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev26) UNRELEASED; urgency=low
 
   * Tray feedback while a backup runs: the tray's Backup Now item reads

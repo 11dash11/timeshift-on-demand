@@ -47,7 +47,9 @@ pkexec /usr/lib/timeshift-on-demand/timeshift-on-demand-backup-helper
   output contains "Snapshot saved successfully" and none of the known
   write-failure phrases. Anything else is passed through unchanged.
   pkexec's own `126` (dialog dismissed) and `127` (not authorized) reach
-  the caller the same way.
+  the caller the same way. The helper never returns 126 or 127 itself: if
+  `timeshift` is missing or not executable (the shell's 127 / 126), it
+  exits `1` with a `BACKUP-FAILED:` reason that names the real code.
 - Tested by `tests/run-tests.sh` (a fake `timeshift`; no root needed).
 - **Caller's job, not the helper's:** waiting for the drive to mount (the
   drive is the `backup_device_uuid` in `/etc/timeshift/timeshift.json`;
@@ -88,7 +90,7 @@ the GUI uses.
 ## Logs
 
 - `~/.local/share/timeshift-on-demand/backup.log`: every backup attempt,
-  GUI and prompt alike. Trimmed to its last 256 KiB once it passes 1 MiB.
+  GUI and prompt alike. Trimmed to its last 5 MiB once it passes 10 MiB.
 - `/var/log/timeshift-on-demand-resume-hook.log`: the resume hook only.
 
 ## Parked: drive-connect trigger

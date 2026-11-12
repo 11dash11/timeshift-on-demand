@@ -63,6 +63,55 @@ class StreamTests(unittest.TestCase):
         self.assertIsNone(self.r._failure_reason)
 
 
+class TrimTests(unittest.TestCase):
+    """_trim_log with the limits patched small, so no test writes 10 MiB."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.log = Path(self.tmp.name) / "backup.log"
+        self.patches = [
+            mock.patch.object(backup_runner, "LOGFILE", self.log),
+            mock.patch.object(backup_runner, "LOG_MAX_BYTES", 100),
+            mock.patch.object(backup_runner, "LOG_KEEP_BYTES", 40),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_limits_are_10_mib_and_5_mib(self):
+        for p in self.patches[1:]:
+            p.stop()
+        try:
+            self.assertEqual(backup_runner.LOG_MAX_BYTES, 10 * 1024 * 1024)
+            self.assertEqual(backup_runner.LOG_KEEP_BYTES, 5 * 1024 * 1024)
+        finally:
+            for p in self.patches[1:]:
+                p.start()
+
+    def test_under_or_at_the_limit_is_untouched(self):
+        for size in (10, 100):
+            self.log.write_bytes(b"x" * size)
+            backup_runner._trim_log()
+            self.assertEqual(self.log.stat().st_size, size)
+
+    def test_over_the_limit_keeps_only_the_last_keep_bytes(self):
+        self.log.write_bytes(b"a" * 61 + b"b" * 40)  # 101 bytes
+        backup_runner._trim_log()
+        self.assertEqual(self.log.read_bytes(), b"b" * 40)
+        self.assertEqual([p.name for p in self.log.parent.iterdir()], ["backup.log"])
+
+    def test_missing_log_and_unwritable_dir_do_not_raise(self):
+        backup_runner._trim_log()  # no file
+        self.log.write_bytes(b"x" * 101)
+        with mock.patch.object(Path, "write_bytes", side_effect=OSError("read-only")):
+            backup_runner._trim_log()  # swallowed: a log we can't trim must not stop a backup
+        self.assertEqual(self.log.stat().st_size, 101)
+
+
 class RunBackupOutcomeTests(unittest.TestCase):
     """_run_backup end to end with a fake pkexec; checks the result and the
     last-run record both paths feed the Dashboard from."""
@@ -108,6 +157,12 @@ class RunBackupOutcomeTests(unittest.TestCase):
         self.assertEqual(r.reason, "Check the drive.")
         got = last_run.load()
         self.assertEqual((got.outcome, got.reason, got.source), ("failed", "Check the drive.", "backup-tab"))
+
+    def test_helper_unable_to_start_timeshift_is_failed_not_cancelled(self):
+        r = self.run_with(["\n", "BACKUP-FAILED: Timeshift could not be started (is it installed?). Exit code 127.\n"], 1)
+        self.assertFalse(r.cancelled)
+        self.assertIn("could not be started", r.reason)
+        self.assertEqual(last_run.load().outcome, "failed")
 
     def test_failure_without_helper_reason_still_gets_a_sentence(self):
         r = self.run_with(["boom\n"], 3)
