@@ -93,7 +93,8 @@ also decide how long your backups are kept.
 
 This is Timeshift 24.01.1's behaviour, read from its source and checked
 against real snapshots on two machines; other versions haven't been
-checked. The Dashboard's **Retention** lines show your settings.
+checked. The Dashboard's
+[retention lines](usage.md#dashboard-tab) show your settings.
 
 - Companion backs up with `timeshift --create --tags D`, so every
   snapshot is tagged `daily`, whatever the schedule settings say. (The
@@ -141,11 +142,13 @@ cat /var/log/timeshift-on-demand-resume-hook.log
 
 Common reasons, in order of likelihood:
 
-1. **The configured drive wasn't mounted** at the time — same as the
+1. **Timeshift's backup drive wasn't mounted** at the time — same as the
    first section above. This is by far the most common cause; the
    prompt only appears once the drive-wait succeeds.
-2. **No drive is configured yet** — check `backup.log` for "No backup
-   drive configured."
+2. **Timeshift has no backup device set yet** — check `backup.log` for
+   "Timeshift has no backup device configured yet (open Timeshift and
+   finish its setup)", and see
+   [Timeshift has no backup device set](#timeshift-has-no-backup-device-set).
 3. **That prompt is turned off** in the Settings tab — check `backup.log`
    for "prompt_on_login is off" or "prompt_on_resume is off".
 4. **(Resume prompt only) Session detection genuinely can't reach your
