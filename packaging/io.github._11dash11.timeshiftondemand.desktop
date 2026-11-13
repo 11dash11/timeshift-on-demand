@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Timeshift On Demand
-Comment=On-demand Timeshift backup, status, and cron-integrity companion
+Comment=On-demand Timeshift backup and status companion
 Exec=timeshift-on-demand
 Icon=timeshift
 Terminal=false

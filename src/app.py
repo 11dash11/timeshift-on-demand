@@ -1,9 +1,8 @@
 """
-app.py — GTK3 main window: Dashboard / Backup / Settings / Maintenance tabs.
+app.py — GTK3 main window: Dashboard / Backup / Settings tabs.
 
-Consolidates what used to be three separate surfaces (zenity dialog +
-spawned terminal monitor, timeshift-status.sh output, and the cron
-check script) into one window. No time-window restriction — the
+Consolidates what used to be separate surfaces (zenity dialog + spawned
+terminal monitor, timeshift-status.sh output) into one window. No time-window restriction — the
 Backup tab's trigger button is always enabled.
 
 There is no drive setting of its own: backups go to whichever device
@@ -27,7 +26,7 @@ from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 import config  # noqa: E402
 import last_run  # noqa: E402
-import scheduling  # noqa: E402
+import retention  # noqa: E402
 import status  # noqa: E402
 from backup_runner import BackupRunner  # noqa: E402
 from log_display import LogDisplay  # noqa: E402
@@ -58,9 +57,6 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
 
         self.settings_tab = self._build_settings_tab()
         notebook.append_page(self.settings_tab, Gtk.Label(label="Settings"))
-
-        self.maintenance_tab = self._build_maintenance_tab()
-        notebook.append_page(self.maintenance_tab, Gtk.Label(label="Maintenance"))
 
         self.refresh_dashboard()
         GLib.timeout_add(STATUS_REFRESH_INTERVAL_MS, self._on_status_refresh_tick)
@@ -93,6 +89,22 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.last_run_label = Gtk.Label(label="", xalign=0)
         self.last_run_label.set_line_wrap(True)
         self.snapshot_label = Gtk.Label(label="Loading snapshot history...", xalign=0)
+        # How long Timeshift keeps Companion's backups (see retention.py).
+        self.retention_label = Gtk.Label(label="", xalign=0)
+        self.retention_label.set_line_wrap(True)
+        # Per-tag counts: short text, the full explanation in the tooltip.
+        self.tags_label = Gtk.Label(label="", xalign=0)
+        self.tags_label.set_line_wrap(True)
+        self.tags_label.set_tooltip_text(retention.TAGS_NOTE)
+        # A permanent limit, not an error: bold, but no error colour or icon,
+        # so someone who chose daily-only history doesn't learn to ignore it.
+        self.retention_warning_label = Gtk.Label(label="", xalign=0)
+        self.retention_warning_label.set_line_wrap(True)
+        # Shown only when there is something to say; show_all() must not
+        # override that.
+        for w in (self.tags_label, self.retention_warning_label):
+            w.set_no_show_all(True)
+            w.set_visible(False)
         self.disk_label = Gtk.Label(label="Loading disk usage...", xalign=0)
 
         advisory = Gtk.Label(
@@ -100,10 +112,9 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
                 "This is a read-only glance. Companion cannot browse, restore, "
                 "or delete snapshots — use the “Open Timeshift” button above; "
                 "it's the only way to work with your snapshot data.\n"
-                "Note: on-demand backups aren't automatically pruned by "
-                "Timeshift's own retention settings — they can accumulate "
-                "indefinitely, so check in and delete old ones in Timeshift "
-                "occasionally."
+                "How long backups are kept is Timeshift's own retention "
+                "setting (Timeshift → Settings → Schedule → Keep); the "
+                "Retention lines above show what it's set to."
             ),
             xalign=0,
         )
@@ -118,7 +129,9 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         btn_row.pack_start(refresh_btn, False, False, 0)
         btn_row.pack_start(open_ts_btn, False, False, 0)
 
-        for w in (self.last_run_label, self.snapshot_label, self.disk_label, btn_row, advisory):
+        for w in (self.last_run_label, self.snapshot_label, self.retention_label,
+                  self.tags_label, self.retention_warning_label,
+                  self.disk_label, btn_row, advisory):
             box.pack_start(w, False, False, 0)
 
         return box
@@ -144,13 +157,36 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         snaps = status.get_snapshots()
         if snaps.error:
             self.snapshot_label.set_text(f"Snapshots: unavailable — {snaps.error}")
+        else:
+            text = f"Snapshots: {len(snaps.names)} total, latest {snaps.latest or 'none'}"
+            if snaps.latest_tags:
+                text += f" ({snaps.latest_tags})"
+            if snaps.incomplete:
+                text += f" — plus {snaps.incomplete} incomplete (in progress, or a run that didn't finish)"
+            self.snapshot_label.set_text(text)
+        self._refresh_retention(snaps)
+
+    def _refresh_retention(self, snaps) -> None:
+        """How long Timeshift keeps backups. The levels and counts come from
+        Timeshift's config; the per-tag counts only when the drive is readable."""
+        ret = status.get_retention()
+        if ret is None:
+            self.retention_label.set_text("Retention: unavailable (Timeshift isn't configured yet)")
+            self.tags_label.set_visible(False)
+            self.retention_warning_label.set_visible(False)
             return
-        text = f"Snapshots: {len(snaps.names)} total, latest {snaps.latest or 'none'}"
-        if snaps.latest_tags:
-            text += f" ({snaps.latest_tags})"
-        if snaps.incomplete:
-            text += f" — plus {snaps.incomplete} incomplete (in progress, or a run that didn't finish)"
-        self.snapshot_label.set_text(text)
+        text = retention.describe(
+            ret,
+            None if snaps.error else snaps.tag_counts,
+            None if snaps.error else len(snaps.names),
+        )
+        self.retention_label.set_text(f"Retention: {text.daily_rule}\nSchedule levels: {text.levels}.")
+        self.tags_label.set_text(text.tags or "")
+        self.tags_label.set_visible(bool(text.tags))
+        self.retention_warning_label.set_markup(
+            "<b>" + GLib.markup_escape_text(text.warning) + "</b>" if text.warning else ""
+        )
+        self.retention_warning_label.set_visible(bool(text.warning))
 
     def _refresh_drive_status(self) -> None:
         drive_uuid = status.get_timeshift_backup_device_uuid()
@@ -352,27 +388,6 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             self.prompt_status_label.set_text("")
         except OSError as exc:
             self.prompt_status_label.set_text(f"Couldn't save this setting: {exc}")
-
-    # ------------------------------------------------------------------
-    # Maintenance tab
-    # ------------------------------------------------------------------
-    def _build_maintenance_tab(self) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_border_width(12)
-
-        self.cron_check_label = Gtk.Label(label="Cron integrity: not yet checked.", xalign=0)
-        self.cron_check_label.set_line_wrap(True)
-        box.pack_start(self.cron_check_label, False, False, 0)
-
-        check_btn = Gtk.Button(label="Check Scheduling Integrity")
-        check_btn.connect("clicked", self._on_check_scheduling_clicked)
-        box.pack_start(check_btn, False, False, 0)
-
-        return box
-
-    def _on_check_scheduling_clicked(self, *_args) -> None:
-        result = scheduling.check_cron_integrity()
-        self.cron_check_label.set_text(f"Cron integrity: {result.detail}")
 
     # ------------------------------------------------------------------
     def _on_delete_event(self, *_args) -> bool:

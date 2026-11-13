@@ -43,6 +43,15 @@ if [[ "$found" -ne "$EXPECTED_TIMESHIFT_CALLS" ]]; then
     echo "  $HELPER, found $found. Update this harness to match the helper."
     exit 2
 fi
+# The helper's command line must stay exactly this. --tags D makes Timeshift
+# tag snapshots "daily" (pruned by count_daily); without it they are tagged
+# "ondemand" and never pruned, and any comment flag also exempts a snapshot.
+if [[ "$(grep -c -- '/usr/bin/timeshift --create --tags D --scripted 2>&1' "$HELPER")" -ne 1 ]] \
+   || grep -qE -- '(^|[[:space:]])--?comments?([[:space:]=]|$)' "$HELPER"; then
+    echo "SETUP FAIL: the helper's timeshift command changed. It must be exactly"
+    echo "  /usr/bin/timeshift --create --tags D --scripted   (no comments flag): see tests/run-tests.sh."
+    exit 2
+fi
 sed 's#/usr/bin/timeshift#timeshift#g' "$HELPER" > "$HELPER_COPY"
 chmod +x "$HELPER_COPY"
 if grep -q '/usr/bin/timeshift' "$HELPER_COPY"; then
@@ -73,8 +82,14 @@ run_case() {
     [[ "$got_exit" -eq "$want_exit" ]] \
         || problems+=("exit code: want $want_exit, got $got_exit")
 
+    # The exact command matters beyond the exit-code logic: --tags D makes
+    # Timeshift tag the snapshot "daily", which its count-based pruning
+    # handles; without it a snapshot is tagged "ondemand" and is never
+    # pruned, and any --comments would also exempt it from pruning.
     grep -qx -- '--create --tags D --scripted' "$log" \
         || problems+=("timeshift --create --tags D --scripted was never called")
+    [[ "$(grep -c -- '--create' "$log")" -eq 1 ]] \
+        || problems+=("expected exactly one --create call, with exactly those arguments")
 
     if [[ "$want_list" == yes ]]; then
         grep -qx -- '--list' "$log" || problems+=("expected a 'timeshift --list' call, none made")
@@ -222,7 +237,7 @@ fi
 # --- progress filter / log display (python unittest; Gtk cases skip
 # themselves when PyGObject is unavailable) -------------------------------
 
-for t in test_progress test_backup_runner test_status test_last_run test_tray_state test_app_tray test_scheduling test_config test_prompt_settings; do
+for t in test_progress test_backup_runner test_status test_last_run test_tray_state test_app_tray test_retention test_config test_prompt_settings; do
     if python3 "$TESTS_DIR/$t.py" >"$WORK/$t.out" 2>&1; then
         printf 'PASS  unit tests: %s\n' "$t"
         pass=$((pass + 1))

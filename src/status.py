@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import retention
 
 SNAPSHOT_RE = re.compile(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}")
 
@@ -33,6 +34,9 @@ class SnapshotInfo:
     # Timeshift's current tags for the newest snapshot, e.g. "ondemand" or
     # "daily" (Timeshift's scheduler can re-tag an on-demand snapshot later).
     latest_tags: str = ""
+    # How many snapshots carry each tag ("daily", "weekly", ...). A snapshot
+    # can carry several tags, so these can add up to more than len(names).
+    tag_counts: dict[str, int] = field(default_factory=dict)
     # Snapshot folders with no info.json: a run still in progress, or one
     # that died before finishing.
     incomplete: int = 0
@@ -98,13 +102,27 @@ def get_snapshots() -> SnapshotInfo:
 
     names = [p.name for p in entries if (p / "info.json").is_file()]
     info = SnapshotInfo(names=names, incomplete=len(entries) - len(names))
-    if names:
+    for name in names:
         try:
-            data = json.loads((snap_dir / names[-1] / "info.json").read_text(encoding="utf-8"))
-            info.latest_tags = str(data.get("tags", ""))
-        except (OSError, json.JSONDecodeError):
-            pass  # count and name are still right; tags are just a nicety
+            data = json.loads((snap_dir / name / "info.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue  # count and name are still right; tags are just a nicety
+        if not isinstance(data, dict):
+            continue
+        raw = data.get("tags", "")
+        tags = raw if isinstance(raw, list) else str(raw).replace(",", " ").split()
+        if name == names[-1]:
+            info.latest_tags = " ".join(str(t) for t in tags)
+        for tag in {str(t) for t in tags}:
+            info.tag_counts[tag] = info.tag_counts.get(tag, 0) + 1
     return info
+
+
+def get_retention() -> Optional[retention.Retention]:
+    """Timeshift's schedule levels and keep counts, or None if its config
+    can't be read (never configured). See retention.py."""
+    config = _timeshift_config()
+    return None if config is None else retention.from_config(config)
 
 
 def get_backup_drive_usage(mount_point: str) -> DiskUsage:

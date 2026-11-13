@@ -39,7 +39,7 @@
   </action>
 
   <!-- There used to be a .cronfix action too, removed in 0.1.0~dev20: it
-       renamed a cron file that Timeshift manages itself (src/scheduling.py). -->
+       renamed a cron file that Timeshift manages itself. -->
 
   <!-- There used to be a .list action as well (auth_admin_keep), running
        Timeshift's list command for the Dashboard. Removed in 0.1.0~dev14: the

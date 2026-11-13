@@ -10,7 +10,7 @@ src/config.py usr/share/timeshift-on-demand/
 src/last_run.py usr/share/timeshift-on-demand/
 src/log_display.py usr/share/timeshift-on-demand/
 src/progress_filter.py usr/share/timeshift-on-demand/
-src/scheduling.py usr/share/timeshift-on-demand/
+src/retention.py usr/share/timeshift-on-demand/
 src/status.py usr/share/timeshift-on-demand/
 src/tray.py usr/share/timeshift-on-demand/
 src/tray_state.py usr/share/timeshift-on-demand/
