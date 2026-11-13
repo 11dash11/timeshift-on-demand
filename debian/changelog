@@ -1,3 +1,14 @@
+timeshift-on-demand (0.1.0~dev30) UNRELEASED; urgency=low
+
+  * Dashboard footer: "the Retention lines above show what it's set to"
+    became "the lines above show what it's set to"; since dev29 no
+    Dashboard line is labelled "Retention". It doesn't point at the
+    Schedule levels line alone, because that line lists only the levels
+    that are on: the daily keep count that governs Companion's backups is
+    on the "Companion backups are tagged daily" line.
+
+ -- JShin <11dash11@users.noreply.github.com>  Fri, 13 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev29) UNRELEASED; urgency=low
 
   * Dashboard retention block reworded to the review checklist: the

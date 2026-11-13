@@ -118,7 +118,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
                 "it's the only way to work with your snapshot data.\n"
                 "How long backups are kept is Timeshift's own retention "
                 "setting (Timeshift → Settings → Schedule → Keep); the "
-                "Retention lines above show what it's set to."
+                "lines above show what it's set to."
             ),
             xalign=0,
         )
