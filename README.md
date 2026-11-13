@@ -11,7 +11,7 @@ It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev28`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev29`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
@@ -49,7 +49,7 @@ before a risky system change, after finishing something significant —
 and clicking one button beats waiting for the next scheduled slot or
 opening Timeshift's full GUI to trigger it manually there.
 
-Three smaller reasons on top of that:
+Two smaller reasons on top of that:
 
 - **A narrower privilege model.** Timeshift's own GUI re-execs its
   entire process as root via `pkexec` at launch. Companion's own
@@ -83,9 +83,9 @@ successful? and gives me a deliberate Yes/No moment each time, instead
 of trusting a silent background schedule to just handle it. Some days
 the honest answer is "not today, the system's too busy" — and that's
 fine, as long as it's a choice I actually made, not a gap I didn't
-notice. Companion also keeps reminding me that checking in on old
-snapshots and pruning them is still my job — not something it, or
-Timeshift, quietly does for me.
+notice. Companion also keeps reminding me to check how long Timeshift
+keeps my backups, and that looking after anything beyond that is still
+my job.
 
 That daily awareness is the actual point. It's a safety habit, not a
 technical guarantee. I hope it's useful to you too — and if it isn't,

@@ -90,19 +90,23 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.last_run_label.set_line_wrap(True)
         self.snapshot_label = Gtk.Label(label="Loading snapshot history...", xalign=0)
         # How long Timeshift keeps Companion's backups (see retention.py).
-        self.retention_label = Gtk.Label(label="", xalign=0)
-        self.retention_label.set_line_wrap(True)
-        # Per-tag counts: short text, the full explanation in the tooltip.
+        self.levels_label = Gtk.Label(label="", xalign=0)
+        self.levels_label.set_line_wrap(True)
+        # Per-tag counts: short text, the overlap explanation only in the
+        # tooltip (the total is on the Snapshots line).
         self.tags_label = Gtk.Label(label="", xalign=0)
         self.tags_label.set_line_wrap(True)
         self.tags_label.set_tooltip_text(retention.TAGS_NOTE)
+        # How long Companion's (daily-tagged) backups are kept.
+        self.retention_rule_label = Gtk.Label(label="", xalign=0)
+        self.retention_rule_label.set_line_wrap(True)
         # A permanent limit, not an error: bold, but no error colour or icon,
         # so someone who chose daily-only history doesn't learn to ignore it.
         self.retention_warning_label = Gtk.Label(label="", xalign=0)
         self.retention_warning_label.set_line_wrap(True)
         # Shown only when there is something to say; show_all() must not
         # override that.
-        for w in (self.tags_label, self.retention_warning_label):
+        for w in (self.tags_label, self.retention_rule_label, self.retention_warning_label):
             w.set_no_show_all(True)
             w.set_visible(False)
         self.disk_label = Gtk.Label(label="Loading disk usage...", xalign=0)
@@ -129,8 +133,8 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         btn_row.pack_start(refresh_btn, False, False, 0)
         btn_row.pack_start(open_ts_btn, False, False, 0)
 
-        for w in (self.last_run_label, self.snapshot_label, self.retention_label,
-                  self.tags_label, self.retention_warning_label,
+        for w in (self.last_run_label, self.snapshot_label, self.levels_label,
+                  self.tags_label, self.retention_rule_label, self.retention_warning_label,
                   self.disk_label, btn_row, advisory):
             box.pack_start(w, False, False, 0)
 
@@ -171,18 +175,17 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         Timeshift's config; the per-tag counts only when the drive is readable."""
         ret = status.get_retention()
         if ret is None:
-            self.retention_label.set_text("Retention: unavailable (Timeshift isn't configured yet)")
-            self.tags_label.set_visible(False)
-            self.retention_warning_label.set_visible(False)
+            self.levels_label.set_text("Retention: unavailable (Timeshift isn't configured yet)")
+            for w in (self.tags_label, self.retention_rule_label, self.retention_warning_label):
+                w.set_visible(False)
             return
-        text = retention.describe(
-            ret,
-            None if snaps.error else snaps.tag_counts,
-            None if snaps.error else len(snaps.names),
-        )
-        self.retention_label.set_text(f"Retention: {text.daily_rule}\nSchedule levels: {text.levels}.")
+        text = retention.describe(ret, None if snaps.error else snaps.tag_counts)
+        # Order: schedule levels (what you act on), tag counts, then the rule.
+        self.levels_label.set_text(f"Schedule levels: {text.levels}.")
         self.tags_label.set_text(text.tags or "")
         self.tags_label.set_visible(bool(text.tags))
+        self.retention_rule_label.set_text(text.daily_rule)
+        self.retention_rule_label.set_visible(True)
         self.retention_warning_label.set_markup(
             "<b>" + GLib.markup_escape_text(text.warning) + "</b>" if text.warning else ""
         )

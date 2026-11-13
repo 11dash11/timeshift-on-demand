@@ -99,8 +99,10 @@ checked. The Dashboard's **Retention** lines show your settings.
   snapshot is tagged `daily`, whatever the schedule settings say. (The
   line "Tagged snapshot …: ondemand" in Timeshift's log is misleading;
   the snapshot itself is tagged `daily`. For the hourly, daily, weekly
-  and monthly levels, Timeshift's "un-tagged" log line also always names
-  the *oldest* snapshot, not the one it actually un-tagged.)
+  and monthly levels, Timeshift's "Snapshot '…' un-tagged" log line also
+  always names the *oldest* snapshot, not the one it actually un-tagged.
+  Those lines come from pruning. To see which snapshots really exist, use
+  `sudo timeshift --list` or **Open Timeshift**.)
 - After every backup Timeshift prunes using only its "Keep" counts, not
   the schedule on/off switches. With a daily count of N, it keeps every
   daily snapshot from the last N days, and never fewer than N snapshots
@@ -116,7 +118,8 @@ checked. The Dashboard's **Retention** lines show your settings.
   the Dashboard's per-tag counts can add up to more than the total.
 - If a scheduled backup is due, Timeshift may tag the oldest Companion
   backup made in the last hour or so (59 minutes) instead of creating
-  another snapshot.
+  another snapshot. (This tagging is separate from the "un-tagged" lines
+  above, which come from pruning.)
 - Snapshots with a comment are never pruned, and neither are snapshots
   tagged `ondemand` (what a bare `timeshift --create`, or Timeshift's own
   GUI "Create" button, makes). Companion adds neither, and an automated

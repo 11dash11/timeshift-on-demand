@@ -74,8 +74,10 @@ def _kept(n: Optional[int]) -> tuple[str, str, str]:
     if n is None:
         return "kept for the number of days set in Timeshift", "", ", so history is short"
     if n == 0:
-        zero = "Timeshift's daily keep count is 0, so older backups can be removed at the next backup"
-        return "kept for 0 days", f": {zero}", f" ({zero})"
+        # With count_daily 0 the prune right after --create removes every daily
+        # snapshot older than "now", including the one just made.
+        zero = "Timeshift's daily keep count is 0, so each Companion backup is deleted as soon as it's made"
+        return "kept for 0 days", f" ({zero})", f" ({zero})"
     return (
         f"kept for a rolling {_plural(n, 'day')} (at least {_plural(n, 'snapshot')})",
         "",
@@ -87,23 +89,29 @@ TAGS_NOTE = ("A snapshot can carry more than one tag (for example daily and week
              "per-tag counts can add up to more than the total.")
 
 
-def describe(ret: Retention, tag_counts: Optional[Mapping[str, int]] = None,
-             total: Optional[int] = None) -> RetentionText:
-    levels = ", ".join(
-        f"{label} {'on' if ret.enabled[key] else 'off'}"
-        + ("" if ret.keep[key] is None else f" (keep {ret.keep[key]})")
-        for key, label in LEVELS
-    )
+def describe(ret: Retention, tag_counts: Optional[Mapping[str, int]] = None) -> RetentionText:
+    # Only the levels that are on, e.g. "Daily/Weekly/Monthly on, keep 2/2/1".
+    on = [(label, ret.keep[key]) for key, label in LEVELS if ret.enabled[key]]
+    if on:
+        levels = "/".join(label for label, _ in on) + " on, keep " + "/".join(
+            "?" if keep is None else str(keep) for _, keep in on)
+        if any(keep is None for _, keep in on):
+            levels += " (? = count not set)"
+    else:
+        levels = "none on"
     n = ret.keep["daily"]  # used even when the Daily level is off: pruning ignores the flag
     kept, rule_tail, warn_tail = _kept(n)
-    rule = f"Companion backups are tagged daily and {kept}{rule_tail}."
+    rule = f"Companion backups are tagged daily: {kept}{rule_tail}."
 
+    # The overlap explanation (TAGS_NOTE) is the label's tooltip, not text;
+    # the total is on the Snapshots line above.
     tags = None
     if tag_counts:
-        parts = ", ".join(f"{tag} {count}" for tag, count in sorted(tag_counts.items()))
+        order = {key: i for i, (key, _label) in enumerate(LEVELS)}
+        parts = ", ".join(
+            f"{tag} {count}"
+            for tag, count in sorted(tag_counts.items(), key=lambda kv: (order.get(kv[0], 99), kv[0])))
         tags = f"Snapshots by tag: {parts}"
-        if total is not None:
-            tags += f" (tags overlap, so these can add up to more than the {total} total)"
 
     warning = None
     if not ret.enabled["weekly"] and not ret.enabled["monthly"]:
