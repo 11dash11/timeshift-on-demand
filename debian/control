@@ -25,8 +25,8 @@ Description: on-demand backup companion for Timeshift
  Timeshift On Demand is a small GTK3 companion app for Timeshift
  (https://github.com/linuxmint/timeshift). It adds a manual on-demand
  backup trigger with live in-app progress, an at-a-glance snapshot and
- backup-drive status dashboard, and a cron-integrity watchdog for
- Timeshift's own scheduling — launched from a tray icon or desktop
+ backup-drive status dashboard that also shows how long Timeshift keeps
+ backups — launched from a tray icon or desktop
  launcher. A login autostart entry and a resume-from-suspend hook can
  also prompt (zenity, with a live monitor window on confirmation) to run
  a backup, independent of whether the main window is open.

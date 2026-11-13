@@ -73,6 +73,65 @@ class TrayWiringTests(unittest.TestCase):
                 os.environ[k] = v
         self.tmp.cleanup()
 
+    def test_no_maintenance_tab(self):
+        notebook = self.win.get_child()
+        labels = [notebook.get_tab_label_text(notebook.get_nth_page(i)) for i in range(notebook.get_n_pages())]
+        self.assertEqual(labels, ["Dashboard", "Backup", "Settings"])
+
+    def dashboard(self, config, snaps):
+        """The retention part of the Dashboard as a dict of what is shown."""
+        import status
+        with mock.patch.object(status, "get_retention",
+                               return_value=A.retention.from_config(config) if config is not None else None), \
+                mock.patch.object(status, "get_snapshots", return_value=snaps):
+            self.win._refresh_snapshot_info()
+        w = self.win
+        return {
+            "retention": w.retention_label.get_text(),
+            "tags": w.tags_label.get_text() if w.tags_label.get_visible() else None,
+            "warning": w.retention_warning_label.get_text() if w.retention_warning_label.get_visible() else None,
+            "warning_markup": w.retention_warning_label.get_label(),
+        }
+
+    NORMAL = {"schedule_daily": "true", "schedule_weekly": "true", "schedule_monthly": "true",
+              "count_daily": "2", "count_weekly": "2", "count_monthly": "1"}
+
+    def test_dashboard_retention_lines_and_no_warning_normally(self):
+        import status
+        snaps = status.SnapshotInfo(names=["a", "b", "c"], tag_counts={"daily": 3, "weekly": 1})
+        d = self.dashboard(self.NORMAL, snaps)
+        self.assertIn("rolling 2 days (at least 2 snapshots)", d["retention"])
+        self.assertIn("Daily on (keep 2)", d["retention"])
+        self.assertEqual(d["tags"], "Snapshots by tag: daily 3, weekly 1 (tags overlap, so these can add up "
+                                    "to more than the 3 total)")
+        self.assertIsNone(d["warning"])
+        self.assertEqual(self.win.tags_label.get_tooltip_text(), A.retention.TAGS_NOTE)
+
+    def test_warning_shows_bold_and_plain_when_weekly_and_monthly_are_off(self):
+        import json
+        import status
+        fixture = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures",
+                               "timeshift-weekly-monthly-off.json")
+        with open(fixture, encoding="utf-8") as f:
+            cfg = json.load(f)
+        d = self.dashboard(cfg, status.SnapshotInfo(names=["a"], tag_counts={"daily": 1}))
+        self.assertIn("No weekly or monthly restore points are scheduled", d["warning"])
+        self.assertTrue(d["warning_markup"].startswith("<b>"))
+        self.assertNotIn("color", d["warning_markup"])          # information, not an error colour
+        # and it goes away again once Weekly is on
+        d = self.dashboard({**cfg, "schedule_weekly": "true"}, status.SnapshotInfo(names=["a"]))
+        self.assertIsNone(d["warning"])
+
+    def test_dashboard_retention_without_a_readable_drive_or_config(self):
+        import status
+        d = self.dashboard({"schedule_weekly": "true", "count_daily": "2"},
+                           status.SnapshotInfo(error="Timeshift's backup drive isn't mounted"))
+        self.assertIn("rolling 2 days", d["retention"])        # levels still shown from the config
+        self.assertIsNone(d["tags"])                           # tag counts need the drive
+        d = self.dashboard(None, status.SnapshotInfo())
+        self.assertIn("unavailable", d["retention"])
+        self.assertIsNone(d["warning"])
+
     def test_start_sets_running_once_and_second_click_does_nothing(self):
         self.win.runner.is_running = False
         with mock.patch.object(self.win.runner, "start") as start:

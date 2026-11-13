@@ -74,32 +74,55 @@ Older versions had a second drive setting in Companion that could
 disagree with Timeshift's ("Timeshift is configured to back up to a
 different device"). That setting is gone, so the mismatch can't happen.
 
-## Maintenance tab says a cron file exists
+## There's a /etc/cron.d/timeshift-hourly file
 
-Check what the message actually says. If Timeshift's own Schedule
-settings have something enabled, this is expected — see
-[usage.md's Maintenance tab section](usage.md#maintenance-tab). If you
-genuinely want on-demand-only backups, the fix is in Timeshift itself:
-**Timeshift → Settings → Schedule → untick everything.** Companion only
-explains this file and doesn't change it.
+Expected, not a bug. Timeshift writes that file whenever any schedule
+level (Daily, Weekly, Monthly, Hourly or Boot) is switched on, and
+rewrites it every time it runs at all, including when Companion starts a
+backup. It runs `timeshift --check --scripted` every hour, and that is
+what creates the scheduled weekly and monthly restore points. If you
+want no scheduled snapshots, untick every level in **Timeshift →
+Settings → Schedule**; Timeshift then removes the file itself. Companion
+doesn't touch it (older versions had a Maintenance tab and a "Fix
+Scheduling" button for this, both gone).
 
-## On-demand snapshots keep piling up
+Before you untick everything, see the next section: the Schedule levels
+also decide how long your backups are kept.
 
-Confirmed real behavior, not a Companion bug: Timeshift's own retention
-("Keep N") settings only apply to its Daily/Weekly/Monthly/Hourly/Boot
-schedule levels. On-demand backups (from Companion, or Timeshift's own
-CLI/GUI) get a separate `ondemand` tag with **no configured limit at
-all** — they accumulate indefinitely.
+## How long backups are kept
 
-There's one partial, timing-dependent exception: an on-demand snapshot
-*can* get retroactively adopted into that day's "daily" bucket (and
-pruned along with it later) — but only if it's created before that
-day's scheduled daily backup already ran. On-demand backups made later
-in the day don't get this treatment and will sit there permanently.
+This is Timeshift 24.01.1's behaviour, read from its source and checked
+against real snapshots on two machines; other versions haven't been
+checked. The Dashboard's **Retention** lines show your settings.
 
-**There's no automatic fix for this** — periodically open Timeshift
-itself and delete old `ondemand`-tagged snapshots you don't need,
-same as you'd manage any other backup history.
+- Companion backs up with `timeshift --create --tags D`, so every
+  snapshot is tagged `daily`, whatever the schedule settings say. (The
+  line "Tagged snapshot …: ondemand" in Timeshift's log is misleading;
+  the snapshot itself is tagged `daily`. For the hourly, daily, weekly
+  and monthly levels, Timeshift's "un-tagged" log line also always names
+  the *oldest* snapshot, not the one it actually un-tagged.)
+- After every backup Timeshift prunes using only its "Keep" counts, not
+  the schedule on/off switches. With a daily count of N, it keeps every
+  daily snapshot from the last N days, and never fewer than N snapshots
+  (a snapshot with a comment is never removed, but still counts toward N).
+  So the daily count applies even when the Daily level is off, and it is
+  a rolling window, not calendar days.
+- Weekly and Monthly levels work the same way with weeks and months, and
+  are the only ways to get restore points older than the daily window.
+  With both off, history goes back just the last few days. This is what
+  the Dashboard's bold warning is about. **To keep longer history,
+  enable Weekly and/or Monthly in Timeshift → Settings → Schedule.**
+- One snapshot can carry several tags (for example daily and weekly), so
+  the Dashboard's per-tag counts can add up to more than the total.
+- If a scheduled backup is due, Timeshift may tag the oldest Companion
+  backup made in the last hour or so (59 minutes) instead of creating
+  another snapshot.
+- Snapshots with a comment are never pruned, and neither are snapshots
+  tagged `ondemand` (what a bare `timeshift --create`, or Timeshift's own
+  GUI "Create" button, makes). Companion adds neither, and an automated
+  test fails if its backup command ever changes.
+- Run out of space instead? Prune by hand in Timeshift (**Open
+  Timeshift**); Companion can't delete snapshots.
 
 ## The login/resume prompt didn't appear
 

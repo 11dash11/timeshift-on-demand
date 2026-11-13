@@ -25,11 +25,13 @@ If you haven't used Timeshift on this machine yet:
    `timeshift-launcher`).
 2. Go through its own first-run setup — snapshot type (RSYNC is the
    common choice), and crucially, **pick a backup device**.
-3. Optionally configure its own Schedule tab (Daily/Weekly/Monthly/
-   etc.) if you want scheduled backups *in addition to* on-demand ones
-   — Companion is designed to work alongside Timeshift's own scheduling,
-   not fight it. See [usage.md](usage.md#maintenance-tab) for how the
-   Maintenance tab handles this.
+3. Set its Schedule tab (Daily/Weekly/Monthly/etc.). This also decides
+   how long your backups are kept: Companion's backups are tagged
+   `daily` and pruned by Timeshift's daily "Keep" count, so with Weekly
+   and Monthly both off you only have the last few days of history. The
+   Dashboard shows the settings and warns about that case; see
+   [usage.md](usage.md#dashboard-tab). Companion works alongside
+   Timeshift's own scheduling, not against it.
 
 Once Timeshift itself has a backup device configured, Companion is ready
 to use.

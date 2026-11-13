@@ -3,15 +3,15 @@
 A small GTK3 companion app for [Timeshift](https://github.com/linuxmint/timeshift)
 (called **Companion** throughout these docs) that adds a manual
 on-demand backup trigger with live progress, an at-a-glance
-snapshot/status dashboard, and a cron-integrity check for Timeshift's
-own scheduling — launched from a tray icon or desktop launcher, and
+snapshot/status dashboard that also shows how long Timeshift keeps your
+backups — launched from a tray icon or desktop launcher, and
 (optionally) prompted at login or after resume from suspend.
 
 It is built **on top of** Timeshift, not instead of it. Snapshot
 browsing, restoring, and deleting stay entirely Timeshift's job; this
 app never touches that.
 
-> **Status:** early, personal-use development (`0.1.0~dev27`). Tested on
+> **Status:** early, personal-use development (`0.1.0~dev28`). Tested on
 > Zorin OS 18.1 (Ubuntu 24.04-based) — see
 > [Known limitations](#known-limitations) for what's still rough around
 > the edges.
@@ -49,17 +49,17 @@ before a risky system change, after finishing something significant —
 and clicking one button beats waiting for the next scheduled slot or
 opening Timeshift's full GUI to trigger it manually there.
 
-Two smaller reasons on top of that:
+Three smaller reasons on top of that:
 
 - **A narrower privilege model.** Timeshift's own GUI re-execs its
   entire process as root via `pkexec` at launch. Companion's own
   process never runs as root — it asks for one narrowly scoped,
   single-purpose privileged action instead (see
   [Privilege model](#privilege-model) below), authorized each time.
-- **Surfacing a real Timeshift quirk.** The Maintenance tab explains
-  (rather than leaves you to puzzle over) a legacy cron file that can
-  reappear depending on Timeshift's own scheduling state — see
-  [usage.md's Maintenance tab section](docs/usage.md#maintenance-tab).
+- **Saying plainly how long your backups are kept.** The Dashboard shows
+  Timeshift's retention settings and warns when no weekly or monthly
+  restore points are scheduled, which limits history to the last few
+  days — see [usage.md's Dashboard section](docs/usage.md#dashboard-tab).
 
 None of this replaces Timeshift's own scheduling — Companion is
 designed to sit alongside it, not instead of it. If you don't need any
@@ -93,8 +93,11 @@ that's completely fine as well.
 
 ## What it does
 
-- **Dashboard** — a read-only glance: snapshot count and latest tag,
-  backup-drive usage, and an "Open Timeshift" button for anything beyond
+- **Dashboard** — a read-only glance: how the last backup went, snapshot
+  count and latest tag, how long Timeshift keeps backups (its schedule
+  levels and keep counts, snapshots per tag, and a warning when no
+  weekly or monthly restore points are scheduled), backup-drive usage,
+  and an "Open Timeshift" button for anything beyond
   that glance (browsing, restoring, deleting snapshots).
 - **Backup** — a "Backup Now" button with a live streamed log of the
   run, same exit-134/139-crash tolerance Timeshift's own CLI needs (see
@@ -102,11 +105,6 @@ that's completely fine as well.
 - **Settings** — the login and resume prompt on/off checkboxes. There's
   no drive to pick: backups go to the device Timeshift itself is
   configured with, and Companion waits for that one.
-- **Maintenance** — checks whether a legacy `/etc/cron.d/timeshift-hourly`
-  file has reappeared, and explains *why*: if any of Timeshift's own
-  Schedule levels (Daily/Weekly/Monthly/Hourly/Boot) are enabled, that
-  file existing is expected Timeshift behavior, not a bug. This is
-  read-only: any change belongs in Timeshift's own Schedule tab.
 - **Tray icon** — Backup Now / Show Window / Quit, so the app can stay
   out of the way between uses.
 - **Login and resume-from-suspend prompts** (on by default, each can be
@@ -167,21 +165,20 @@ Timeshift leaves world-readable.
 - Doesn't manage snapshots (browse/restore/delete) — that's Timeshift's
   own GUI, one click away via "Open Timeshift".
 - Doesn't touch Timeshift's own scheduled backups — if you want
-  scheduled *and* on-demand backups, both work together; Companion's
-  Maintenance tab recognizes and respects Timeshift's own Schedule
-  settings rather than fighting them.
+  scheduled *and* on-demand backups, both work together; Companion
+  respects Timeshift's own Schedule settings rather than fighting them.
 
 ## Known limitations
 
-- **On-demand snapshots aren't automatically pruned.** Timeshift's
-  "Keep N" retention only applies to its own Daily/Weekly/Monthly/
-  Hourly/Boot schedule levels — on-demand snapshots get a separate
-  `ondemand` tag with no configured limit of its own, so they accumulate
-  indefinitely unless you delete old ones yourself in Timeshift.
-  (Confirmed: an on-demand snapshot *can* get absorbed into that day's
-  "daily" bucket and pruned along with it, but only if it's created
-  before that day's scheduled daily backup already ran — not something
-  to rely on, just an occasional side effect.)
+- **History is only as long as Timeshift's retention settings.**
+  Companion's backups are tagged `daily` and Timeshift prunes them by its
+  daily "Keep" count, kept as a rolling window of that many days (and at
+  least that many snapshots) even when the Daily schedule level is off.
+  Only the Weekly and Monthly levels create restore points older than
+  that, so with both off, history goes back just a few days. The
+  Dashboard shows the settings and warns about this case. This is how
+  Timeshift 24.01.1 behaves, read from its source and checked against
+  real snapshots; other versions haven't been checked.
 - The resume-from-suspend prompt reaches into an already-running desktop
   session from a root, session-less `systemd-logind` hook — inherently
   more fragile than the login-time prompt (which runs inside your normal

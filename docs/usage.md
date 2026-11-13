@@ -1,6 +1,6 @@
 # Usage guide
 
-Companion has four tabs, a tray icon, and two optional auto-prompts.
+Companion has three tabs, a tray icon, and two optional auto-prompts.
 This walks through all of them.
 
 ## Dashboard tab
@@ -18,6 +18,22 @@ A read-only glance:
   a failure keeps showing until a backup succeeds. A backup can leave a
   plausible-looking snapshot behind and still have failed, so check this
   line rather than the snapshot list.
+- **Retention** — how long Timeshift keeps your backups, read from its
+  settings (Timeshift → Settings → Schedule). It shows:
+  - Companion's backups are tagged `daily` and kept for a rolling N days
+    (at least N snapshots), where N is Timeshift's daily "Keep" count.
+    That count applies even if the Daily level is switched off.
+  - Which schedule levels are on and what each keeps.
+  - Snapshots per tag. One snapshot can carry more than one tag, so these
+    can add up to more than the total shown above them.
+  - A bold warning when neither Weekly nor Monthly is on: *"No weekly or
+    monthly restore points are scheduled …"*. Only those levels make
+    restore points older than the daily window, so history then goes
+    back just a few days. To keep longer history, enable Weekly and/or
+    Monthly in Timeshift → Settings → Schedule.
+
+  These rules are Timeshift 24.01.1's, taken from its source and checked
+  against real snapshots; other versions haven't been checked.
 - **Snapshots** — total count, the latest snapshot and its current
   Timeshift tag, read straight from Timeshift's snapshot folders on the
   backup drive. No password needed; the drive just has to be mounted.
@@ -30,11 +46,11 @@ A read-only glance:
   Timeshift launches the real Timeshift GUI for anything beyond this
   glance.
 
-The advisory text under the buttons is worth reading once: Companion
-cannot browse, restore, or delete snapshots, and on-demand backups
-aren't automatically pruned by Timeshift's own retention settings — see
-[troubleshooting.md](troubleshooting.md#on-demand-snapshots-keep-piling-up)
-if that becomes relevant.
+The advisory text under the buttons says the Dashboard is a read-only
+glance: Companion cannot browse, restore, or delete snapshots, and how
+long backups are kept is Timeshift's own retention setting. See
+[troubleshooting.md](troubleshooting.md#how-long-backups-are-kept) for
+how that works.
 
 The Dashboard refreshes itself every 30 seconds, after every backup,
 and when you click Refresh.
@@ -100,20 +116,6 @@ The two checkboxes here turn the
 [login and resume prompts](#auto-prompts-login-and-resume) on or off
 separately. Both start on, and a change applies from the next login or
 resume.
-
-## Maintenance tab
-
-![Maintenance tab](images/maintenance.png)
-
-Checks whether a `/etc/cron.d/timeshift-hourly` file exists, and explains
-why. This tab is read-only and changes nothing:
-
-- **If Timeshift's own Schedule settings have anything enabled**
-  (Daily/Weekly/Monthly/Hourly/Boot), the cron file existing is expected,
-  not a bug.
-- **If Timeshift's scheduling is entirely off** and the file still
-  exists, the check says so. Timeshift manages this file itself, so any
-  change belongs in Timeshift's own Settings → Schedule.
 
 ## Tray icon
 

@@ -1,3 +1,39 @@
+timeshift-on-demand (0.1.0~dev28) UNRELEASED; urgency=low
+
+  * The Maintenance tab is gone (src/scheduling.py and its tests removed).
+    It only explained Timeshift's /etc/cron.d/timeshift-hourly file and
+    changed nothing. In its place the Dashboard shows how long Timeshift
+    keeps backups (new src/retention.py): Companion's backups are tagged
+    daily and kept for a rolling N days (at least N snapshots), N being
+    Timeshift's count_daily, which applies even with the Daily level off;
+    the schedule levels and their keep counts; and snapshots per tag, with
+    a note that one snapshot can carry several tags so the numbers can add
+    up to more than the total. When neither Weekly nor Monthly is
+    scheduled, a bold warning (no error colour or icon, since for someone
+    who chose daily-only history it is a permanent notice, not a fault)
+    says history only goes back a few days and how to fix it. The tag
+    counts sit on their own line with the longer explanation as a tooltip.
+    A missing, non-numeric or negative daily count reads "kept for the
+    number of days set in Timeshift", and a count of 0 says older backups
+    can be removed at the next backup.
+  * Docs corrected: Companion's backups are tagged daily and pruned by the
+    daily Keep count, not tagged ondemand and kept forever, and the "adopted
+    into that day's daily bucket only if made before the scheduled daily"
+    rule was wrong. Based on Timeshift 24.01.1's source and real snapshots
+    on both machines; other versions are unchecked. The docs now say so.
+  * Tests: the helper's exact command (`timeshift --create --tags D
+    --scripted`, exactly one create call, no comments flag) is asserted
+    both statically and in every helper case, because dropping --tags D or
+    adding a comment would stop Timeshift ever pruning Companion's backups.
+  * status.get_snapshots now counts snapshots per tag.
+  * Neither machine ever shows the weekly/monthly warning, so it is tested
+    from a sample config (tests/fixtures/timeshift-weekly-monthly-off.json),
+    which tests/show-dashboard.py also uses to open the real window with
+    that retention, for a look or a screenshot, without touching the live
+    Schedule settings.
+
+ -- JShin <11dash11@users.noreply.github.com>  Fri, 13 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev27) UNRELEASED; urgency=low
 
   * Backup helper: exit codes 126 and 127 can now only come from pkexec.
