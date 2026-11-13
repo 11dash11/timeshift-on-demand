@@ -26,3 +26,4 @@ docs/Screenshot from *.png
 
 # Internal build/decision log — not part of the public-facing docs set
 PROJECT.md
+/CLAUDE.md
