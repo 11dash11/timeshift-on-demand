@@ -1,3 +1,27 @@
+timeshift-on-demand (0.1.0~dev29) UNRELEASED; urgency=low
+
+  * Dashboard retention block reworded to the review checklist: the
+    Schedule levels line comes first and lists only the levels that are
+    on ("Daily/Weekly/Monthly on, keep 2/2/1", or "none on"); the tag
+    counts follow in level order with the overlap explanation only in the
+    tooltip (the total stays on the Snapshots line); the rule line reads
+    "Companion backups are tagged daily: kept for a rolling N days (at
+    least N snapshots)" and is its own label.
+  * A daily keep count of 0 now says what Timeshift actually does: each
+    Companion backup is deleted as soon as it's made (the prune right after
+    --create removes every daily snapshot older than now). A level with no
+    keep count shows "?" with "(? = count not set)".
+  * retention.describe() no longer takes the unused total; the Dashboard's
+    retention_label is now levels_label.
+  * README: "Two smaller reasons" (it listed two), and the personal-reason
+    paragraph no longer says pruning is entirely the user's job.
+    usage.md lists the Dashboard lines in on-screen order.
+  * troubleshooting.md: the "un-tagged" log lines come from pruning, not
+    from the ~59-minute tagging of a due scheduled level; use
+    `sudo timeshift --list` or Open Timeshift to see which snapshots exist.
+
+ -- JShin <11dash11@users.noreply.github.com>  Fri, 13 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev28) UNRELEASED; urgency=low
 
   * The Maintenance tab is gone (src/scheduling.py and its tests removed).

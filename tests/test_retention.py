@@ -15,8 +15,8 @@ REAL = {  # what both machines have
 }
 
 
-def text(config, tag_counts=None, total=None):
-    return retention.describe(retention.from_config(config), tag_counts, total)
+def text(config, tag_counts=None):
+    return retention.describe(retention.from_config(config), tag_counts)
 
 
 class FromConfigTests(unittest.TestCase):
@@ -45,9 +45,15 @@ class DescribeTests(unittest.TestCase):
         t = text(REAL)
         self.assertIsNone(t.warning)
         self.assertEqual(t.daily_rule,
-                         "Companion backups are tagged daily and kept for a rolling 2 days (at least 2 snapshots).")
-        self.assertIn("Daily on (keep 2)", t.levels)
-        self.assertIn("Hourly off (keep 6)", t.levels)
+                         "Companion backups are tagged daily: kept for a rolling 2 days (at least 2 snapshots).")
+        self.assertEqual(t.levels, "Daily/Weekly/Monthly on, keep 2/2/1")   # only the levels that are on
+
+    def test_levels_line_shapes(self):
+        off = {k: "false" if k.startswith("schedule_") else v for k, v in REAL.items()}
+        self.assertEqual(text(off).levels, "none on")
+        self.assertEqual(text({**off, "schedule_daily": "true", "schedule_boot": "true"}).levels,
+                         "Daily/Boot on, keep 2/5")
+        self.assertEqual(text({**REAL, "count_weekly": "x"}).levels, "Daily/Weekly/Monthly on, keep 2/?/1 (? = count not set)")
 
     def test_warning_when_weekly_and_monthly_are_both_off(self):
         for cfg in ({**REAL, "schedule_weekly": "false", "schedule_monthly": "false"},                        # daily only
@@ -86,7 +92,7 @@ class DescribeTests(unittest.TestCase):
             with self.subTest(bad=bad):
                 self.assertEqual(
                     text(cfg).daily_rule,
-                    "Companion backups are tagged daily and kept for the number of days set in Timeshift.")
+                    "Companion backups are tagged daily: kept for the number of days set in Timeshift.")
                 self.assertEqual(
                     text(cfg_off).warning,
                     "No weekly or monthly restore points are scheduled. Companion backups are kept for "
@@ -98,8 +104,8 @@ class DescribeTests(unittest.TestCase):
         t = text({**REAL, "count_daily": "0"})
         self.assertEqual(
             t.daily_rule,
-            "Companion backups are tagged daily and kept for 0 days: Timeshift's daily keep count is 0, "
-            "so older backups can be removed at the next backup.")
+            "Companion backups are tagged daily: kept for 0 days (Timeshift's daily keep count is 0, "
+            "so each Companion backup is deleted as soon as it's made).")
         self.assertNotIn("rolling 0", t.daily_rule)
 
     def test_zero_count_warning_is_one_readable_sentence(self):
@@ -107,20 +113,19 @@ class DescribeTests(unittest.TestCase):
         self.assertEqual(
             text(cfg).warning,
             "No weekly or monthly restore points are scheduled. Companion backups are kept for 0 days "
-            "(Timeshift's daily keep count is 0, so older backups can be removed at the next backup). "
+            "(Timeshift's daily keep count is 0, so each Companion backup is deleted as soon as it's made). "
             "To keep longer history, enable Weekly and/or Monthly in Timeshift → Settings → Schedule.")
 
     def test_tag_counts_and_the_overlap_note(self):
-        t = text(REAL, {"daily": 5, "weekly": 2, "monthly": 1}, total=8)
-        self.assertEqual(
-            t.tags,
-            "Snapshots by tag: daily 5, monthly 1, weekly 2 (tags overlap, so these can add up to "
-            "more than the 8 total)")
-        self.assertIn("more than one tag", retention.TAGS_NOTE)   # the tooltip text
+        t = text(REAL, {"daily": 5, "weekly": 2, "monthly": 1})
+        # level order, and no visible overlap text: that is the tooltip (TAGS_NOTE)
+        self.assertEqual(t.tags, "Snapshots by tag: daily 5, weekly 2, monthly 1")
+        self.assertEqual(text(REAL, {"ondemand": 1, "daily": 2}).tags, "Snapshots by tag: daily 2, ondemand 1")
+        self.assertIn("more than one tag", retention.TAGS_NOTE)
 
     def test_no_tags_shown_when_unknown_or_empty(self):
-        self.assertIsNone(text(REAL, None, None).tags)
-        self.assertIsNone(text(REAL, {}, 0).tags)
+        self.assertIsNone(text(REAL, None).tags)
+        self.assertIsNone(text(REAL, {}).tags)
 
 
 if __name__ == "__main__":

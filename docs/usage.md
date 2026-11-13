@@ -18,14 +18,21 @@ A read-only glance:
   a failure keeps showing until a backup succeeds. A backup can leave a
   plausible-looking snapshot behind and still have failed, so check this
   line rather than the snapshot list.
+- **Snapshots** — total count, the latest snapshot and its current
+  Timeshift tag, read straight from Timeshift's snapshot folders on the
+  backup drive. No password needed; the drive just has to be mounted.
+  If a snapshot folder exists without Timeshift's `info.json`, it's shown
+  as "incomplete" (a backup still running, or one that didn't finish).
 - **Retention** — how long Timeshift keeps your backups, read from its
-  settings (Timeshift → Settings → Schedule). It shows:
-  - Companion's backups are tagged `daily` and kept for a rolling N days
-    (at least N snapshots), where N is Timeshift's daily "Keep" count.
-    That count applies even if the Daily level is switched off.
-  - Which schedule levels are on and what each keeps.
+  settings (Timeshift → Settings → Schedule). It shows, in this order:
+  - The schedule levels that are on and what each keeps, for example
+    "Daily/Weekly/Monthly on, keep 2/2/1". This is the line to act on.
   - Snapshots per tag. One snapshot can carry more than one tag, so these
-    can add up to more than the total shown above them.
+    can add up to more than the total on the Snapshots line; hover over
+    the line for that explanation.
+  - "Companion backups are tagged daily: kept for a rolling N days (at
+    least N snapshots)", where N is Timeshift's daily "Keep" count. That
+    count applies even if the Daily level is switched off.
   - A bold warning when neither Weekly nor Monthly is on: *"No weekly or
     monthly restore points are scheduled …"*. Only those levels make
     restore points older than the daily window, so history then goes
@@ -34,11 +41,6 @@ A read-only glance:
 
   These rules are Timeshift 24.01.1's, taken from its source and checked
   against real snapshots; other versions haven't been checked.
-- **Snapshots** — total count, the latest snapshot and its current
-  Timeshift tag, read straight from Timeshift's snapshot folders on the
-  backup drive. No password needed; the drive just has to be mounted.
-  If a snapshot folder exists without Timeshift's `info.json`, it's shown
-  as "incomplete" (a backup still running, or one that didn't finish).
 - **Backup drive** — usage of the drive Timeshift is set up to back up to
   (Timeshift → Settings → Location), if it's currently mounted. If
   Timeshift has no backup device yet, this says so.

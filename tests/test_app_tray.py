@@ -87,7 +87,8 @@ class TrayWiringTests(unittest.TestCase):
             self.win._refresh_snapshot_info()
         w = self.win
         return {
-            "retention": w.retention_label.get_text(),
+            "levels": w.levels_label.get_text(),
+            "rule": w.retention_rule_label.get_text() if w.retention_rule_label.get_visible() else None,
             "tags": w.tags_label.get_text() if w.tags_label.get_visible() else None,
             "warning": w.retention_warning_label.get_text() if w.retention_warning_label.get_visible() else None,
             "warning_markup": w.retention_warning_label.get_label(),
@@ -100,10 +101,10 @@ class TrayWiringTests(unittest.TestCase):
         import status
         snaps = status.SnapshotInfo(names=["a", "b", "c"], tag_counts={"daily": 3, "weekly": 1})
         d = self.dashboard(self.NORMAL, snaps)
-        self.assertIn("rolling 2 days (at least 2 snapshots)", d["retention"])
-        self.assertIn("Daily on (keep 2)", d["retention"])
-        self.assertEqual(d["tags"], "Snapshots by tag: daily 3, weekly 1 (tags overlap, so these can add up "
-                                    "to more than the 3 total)")
+        self.assertEqual(d["levels"], "Schedule levels: Daily/Weekly/Monthly on, keep 2/2/1.")
+        self.assertEqual(d["tags"], "Snapshots by tag: daily 3, weekly 1")     # overlap note only in the tooltip
+        self.assertEqual(d["rule"], "Companion backups are tagged daily: kept for a rolling 2 days "
+                                    "(at least 2 snapshots).")
         self.assertIsNone(d["warning"])
         self.assertEqual(self.win.tags_label.get_tooltip_text(), A.retention.TAGS_NOTE)
 
@@ -126,11 +127,13 @@ class TrayWiringTests(unittest.TestCase):
         import status
         d = self.dashboard({"schedule_weekly": "true", "count_daily": "2"},
                            status.SnapshotInfo(error="Timeshift's backup drive isn't mounted"))
-        self.assertIn("rolling 2 days", d["retention"])        # levels still shown from the config
+        self.assertIn("rolling 2 days", d["rule"])             # still shown from the config
+        self.assertEqual(d["levels"], "Schedule levels: Weekly on, keep ? (? = count not set).")   # no count_weekly in this config
         self.assertIsNone(d["tags"])                           # tag counts need the drive
         d = self.dashboard(None, status.SnapshotInfo())
-        self.assertIn("unavailable", d["retention"])
+        self.assertIn("unavailable", d["levels"])
         self.assertIsNone(d["warning"])
+        self.assertIsNone(d["rule"])
 
     def test_start_sets_running_once_and_second_click_does_nothing(self):
         self.win.runner.is_running = False

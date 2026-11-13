@@ -142,7 +142,7 @@ class SnapshotTagTests(unittest.TestCase):
         self.cfg.write_text(fixture.read_text())
         r = status.get_retention()
         self.assertEqual((r.enabled["weekly"], r.enabled["monthly"], r.enabled["daily"]), (False, False, True))
-        text = retention.describe(r, {"daily": 3}, 3)
+        text = retention.describe(r, {"daily": 3})
         self.assertIn("No weekly or monthly restore points are scheduled", text.warning)
         self.assertIn("rolling 2 days (at least 2 snapshots)", text.warning)
 
