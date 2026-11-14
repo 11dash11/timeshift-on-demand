@@ -140,6 +140,11 @@ do_create() {
         exit-126|exit-127)
             # what the shell reports when it can't run timeshift at all
             exit "${FAKE_TIMESHIFT_SCENARIO#exit-}" ;;
+        already-running)
+            # real Samsung run, 2026-11-14: refused while the hourly
+            # cron check was still running
+            echo "Another instance of this application is running (PID=11602)"
+            exit 1 ;;
         generic-fail)
             echo "E: Failed to mount device '/dev/sdb1' at '/run/timeshift/12345/backup'"
             exit 1 ;;

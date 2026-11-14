@@ -62,11 +62,12 @@ fi
 # --- runner --------------------------------------------------------------
 
 # run_case NAME SCENARIO EXPECTED_EXIT EXPECT_LIST_CALLED(yes|no) [EXPECTED_MESSAGE]
-#   [EXPECTED_REASON_SUBSTRING]
+#   [EXPECTED_REASON_SUBSTRING] [UNWANTED_REASON_SUBSTRING]
 # Every nonzero exit must end with a "BACKUP-FAILED: <reason>" line, and
 # a zero exit must not print one.
 run_case() {
     local name=$1 scenario=$2 want_exit=$3 want_list=$4 want_msg=${5:-} want_reason=${6:-}
+    local unwanted_reason=${7:-}
     local case_dir="$WORK/case-$scenario"
     local tmp="$case_dir/tmp" log="$case_dir/calls.log" out="$case_dir/out.txt"
     mkdir -p "$tmp"
@@ -114,6 +115,10 @@ run_case() {
         grep -F -- 'BACKUP-FAILED: ' "$out" | grep -qF -- "$want_reason" \
             || problems+=("reason missing: $want_reason")
     fi
+    if [[ -n "$unwanted_reason" ]]; then
+        grep -F -- 'BACKUP-FAILED: ' "$out" | grep -qF -- "$unwanted_reason" \
+            && problems+=("reason should not contain: $unwanted_reason")
+    fi
 
     local seen_during
     seen_during=$(cat "$log.tmpcount" 2>/dev/null || echo 0)
@@ -144,6 +149,9 @@ run_case "1  exit 0, real success -> 0" \
 
 run_case "2  exit 1, generic failure -> passes through as 1" \
     generic-fail 1 no "" "Timeshift failed (exit code 1)"
+
+run_case "2b exit 1, another Timeshift instance running -> 1, plain reason" \
+    already-running 1 no "" "Timeshift is already running, so no backup was made. If the Timeshift window is open, close it." "exit code"
 
 run_case "3  exit 134 + failure phrase, recent snapshot exists -> stays 134" \
     abort-with-failure-phrase 134 no \
