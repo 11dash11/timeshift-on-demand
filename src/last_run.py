@@ -3,8 +3,9 @@ last_run.py — remembers how the most recent backup ended, so the Dashboard
 can answer "was my last backup OK?" (no GTK, no privilege).
 
 Both ways of running a backup record into the same small file: the Backup
-tab / tray (BackupRunner) and the login/resume prompt script, which calls
-this module's command line:
+tab and tray (BackupRunner, source "backup-tab" or "tray") and the
+login/resume prompt script (source "prompt"), which calls this module's
+command line:
 
     python3 last_run.py record --source prompt --outcome failed --reason="..."
 
@@ -31,7 +32,7 @@ from typing import Optional
 
 SUCCESS, FAILED = "success", "failed"
 OUTCOMES = (SUCCESS, FAILED)
-SOURCE_LABELS = {"backup-tab": "Backup tab", "prompt": "login/resume prompt"}
+SOURCE_LABELS = {"backup-tab": "Backup tab", "tray": "tray icon", "prompt": "login/resume prompt"}
 MAX_REASON = 500
 
 
@@ -97,11 +98,13 @@ def describe(last: Optional[LastRun]) -> str:
     # a fresh one.
     fmt = "%a %d %b %H:%M" if last.finished_at.year == datetime.now().year else "%a %d %b %Y %H:%M"
     when = last.finished_at.strftime(fmt)
+    # Where it was started from, straight after "Last backup"; an unknown
+    # or missing source (older records) just leaves it out.
     via = SOURCE_LABELS.get(last.source or "")
-    suffix = f" ({via})" if via else ""
+    head = f"Last backup ({via})" if via else "Last backup"
     if last.outcome == SUCCESS:
-        return f"Last backup: succeeded — {when}{suffix}"
-    text = f"Last backup: FAILED — {when}{suffix}"
+        return f"{head}: succeeded — {when}"
+    text = f"{head}: FAILED — {when}"
     return f"{text}\n{last.reason}" if last.reason else text
 
 

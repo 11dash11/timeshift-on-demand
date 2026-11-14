@@ -138,11 +138,25 @@ class TrayWiringTests(unittest.TestCase):
     def test_start_sets_running_once_and_second_click_does_nothing(self):
         self.win.runner.is_running = False
         with mock.patch.object(self.win.runner, "start") as start:
-            start.side_effect = lambda on_done: setattr(self.win.runner, "is_running", True)
+            start.side_effect = lambda on_done, source: setattr(self.win.runner, "is_running", True)
             self.win._on_trigger_clicked()
             self.win._on_trigger_clicked()  # guard: already running
         self.assertEqual(self.calls, [True])
         self.assertEqual(start.call_count, 1)
+
+    def test_tray_start_records_tray_and_button_records_backup_tab(self):
+        # main.py's tray item calls start_backup("tray"); the Backup Now
+        # button goes through _on_trigger_clicked.
+        for name, trigger, want in (
+            ("tray", lambda: self.win.start_backup("tray"), "tray"),
+            ("button", lambda: self.win.trigger_btn.clicked(), "backup-tab"),
+        ):
+            with self.subTest(name):
+                self.win.runner.is_running = False
+                with mock.patch.object(self.win.runner, "start") as start:
+                    trigger()
+                start.assert_called_once()
+                self.assertEqual(start.call_args.kwargs["source"], want)
 
     def test_every_ending_restores_idle_first(self):
         endings = {

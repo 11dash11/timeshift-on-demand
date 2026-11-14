@@ -49,6 +49,25 @@ class LastRunTests(unittest.TestCase):
         self.assertIn("FAILED", text)
         self.assertTrue(text.endswith("Check the drive."))
 
+    def test_layout_puts_the_source_after_last_backup(self):
+        at = datetime(datetime.now().year, 11, 14, 12, 7).astimezone()
+        when = at.strftime("%a %d %b %H:%M")
+        cases = {
+            "tray": "Last backup (tray icon)",
+            "backup-tab": "Last backup (Backup tab)",
+            "prompt": "Last backup (login/resume prompt)",
+            None: "Last backup",       # older record, no source
+            "elsewhere": "Last backup",  # unknown source: left out
+        }
+        for source, head in cases.items():
+            with self.subTest(source=source):
+                ok = last_run.LastRun(at, "success", source=source)
+                self.assertEqual(last_run.describe(ok), f"{head}: succeeded — {when}")
+                bad = last_run.LastRun(at, "failed", "Check the drive.", source=source)
+                self.assertEqual(last_run.describe(bad), f"{head}: FAILED — {when}\nCheck the drive.")
+                bare = last_run.LastRun(at, "failed", source=source)
+                self.assertEqual(last_run.describe(bare), f"{head}: FAILED — {when}")
+
     def test_old_cancelled_file_reads_as_nothing(self):
         self.path.parent.mkdir(parents=True)
         self.path.write_text('{"outcome": "cancelled", "finished_at": "2026-11-11T07:55:00"}')

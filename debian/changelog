@@ -1,3 +1,21 @@
+timeshift-on-demand (0.1.0~dev33) UNRELEASED; urgency=low
+
+  * A backup started from the tray icon is now recorded as source "tray"
+    (label "tray icon") instead of "backup-tab": BackupRunner.start()
+    takes the source, and the new window method start_backup(source) is
+    called with "backup-tab" by the Backup Now button and with "tray" by
+    the tray item. The login/resume prompt still records "prompt".
+  * Dashboard: the source now comes straight after "Last backup", e.g.
+    "Last backup (tray icon): succeeded — <when>" or "Last backup
+    (Backup tab): FAILED — <when>" with the reason on the next line. A
+    record with no or an unknown source still reads "Last backup: …".
+  * Tests: tray and button record their sources; all three runner records
+    (success, failure, runner error) use the source; a duplicate start
+    keeps the running backup's source; the new layout,
+    including an unknown source.
+
+ -- JShin <11dash11@users.noreply.github.com>  Sat, 14 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev32) UNRELEASED; urgency=low
 
   * Backup tab status line, and the Dashboard's Snapshots and Backup

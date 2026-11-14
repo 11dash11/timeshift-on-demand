@@ -113,6 +113,9 @@ class BackupRunner:
         self.is_running = False
         self.result: Optional[BackupResult] = None
         self._failure_reason: Optional[str] = None
+        # Where the run was started from, for last_run's record: "backup-tab"
+        # or "tray" (see last_run.SOURCE_LABELS). Set by start().
+        self._source = "backup-tab"
 
     def _log(self, msg: str, persist: bool = True) -> str:
         """Queue a line for the Backup tab and (unless persist=False)
@@ -165,11 +168,13 @@ class BackupRunner:
                 break
         return lines
 
-    def start(self, on_done: Optional[Callable[[BackupResult], None]] = None) -> None:
+    def start(self, on_done: Optional[Callable[[BackupResult], None]] = None,
+              source: str = "backup-tab") -> None:
         if self.is_running:
             self._log("Backup already in progress — ignoring duplicate trigger.")
             return
         self.is_running = True
+        self._source = source
         self.result = None
         _trim_log()
         self._thread = threading.Thread(
@@ -199,7 +204,7 @@ class BackupRunner:
             result = self._run_backup(started)
         except Exception as exc:  # noqa: BLE001 — must not escape the worker thread
             self._log(f"Backup runner error: {exc!r}")
-            last_run.record(last_run.FAILED, f"Backup runner error: {exc!r}", source="backup-tab")
+            last_run.record(last_run.FAILED, f"Backup runner error: {exc!r}", source=self._source)
             # drive_mounted=True so the GUI reports "failed", not "did not
             # run" — we can't know how far the attempt got.
             result = BackupResult(
@@ -288,9 +293,9 @@ class BackupRunner:
         # A dismissed password dialog means the helper never ran, so (like a
         # drive that never mounted) it doesn't replace an earlier failure.
         if exit_code == 0:
-            last_run.record(last_run.SUCCESS, source="backup-tab")
+            last_run.record(last_run.SUCCESS, source=self._source)
         elif exit_code != PKEXEC_EXIT_DISMISSED:
-            last_run.record(last_run.FAILED, reason, source="backup-tab")
+            last_run.record(last_run.FAILED, reason, source=self._source)
 
         return BackupResult(
             started, datetime.now(), exit_code=exit_code, drive_mounted=True, reason=reason,
