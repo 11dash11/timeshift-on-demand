@@ -37,7 +37,7 @@ def main() -> int:
         if "built" not in indicator_holder:
             handle = tray.build_tray(
                 app,
-                on_backup_now=lambda: app.window._on_trigger_clicked(),
+                on_backup_now=lambda: app.window.start_backup("tray"),
                 on_show_window=lambda: app.window.present(),
                 on_quit=lambda: app.quit(),
             )

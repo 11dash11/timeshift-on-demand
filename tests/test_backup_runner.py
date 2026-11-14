@@ -146,6 +146,46 @@ class RunBackupOutcomeTests(unittest.TestCase):
         with mock.patch.object(backup_runner.subprocess, "Popen", return_value=proc):
             return backup_runner.BackupRunner()._run_backup(datetime.now())
 
+    def test_start_records_where_it_was_started_from(self):
+        # All three last_run.record calls (success, failure, runner error)
+        # use the source start() was given.
+        import status
+        for source in ("tray", "backup-tab"):
+            for ending, output, code, want in (
+                ("success", ["ok\n"], 0, "success"),
+                ("failure", ["\n", "BACKUP-FAILED: x\n"], 1, "failed"),
+                ("runner error", None, None, "failed"),
+            ):
+                with self.subTest(source=source, ending=ending):
+                    last_run.record(last_run.SUCCESS, source="prompt")  # a different earlier record
+                    proc = mock.MagicMock()
+                    proc.__enter__.return_value = proc
+                    proc.stdout = iter(output or [])
+                    proc.returncode = code
+                    runner = backup_runner.BackupRunner()
+                    error = RuntimeError("boom") if output is None else None
+                    with mock.patch.object(backup_runner.subprocess, "Popen", return_value=proc), \
+                            mock.patch.object(status, "get_timeshift_backup_device_uuid",
+                                              return_value="u", side_effect=error):
+                        runner.start(source=source)
+                        runner._thread.join(10)
+                    self.assertFalse(runner._thread.is_alive())
+                    got = last_run.load()
+                    self.assertEqual((got.outcome, got.source), (want, source))
+                    if ending == "failure":
+                        self.assertEqual(got.reason, "x")
+                    if ending == "runner error":
+                        self.assertIn("Backup runner error", got.reason)
+
+    def test_duplicate_start_keeps_the_running_backups_source(self):
+        runner = backup_runner.BackupRunner()
+        runner.is_running = True
+        runner._source = "tray"
+        with mock.patch.object(backup_runner.threading, "Thread") as thread:
+            runner.start(source="backup-tab")
+        thread.assert_not_called()
+        self.assertEqual(runner._source, "tray")
+
     def test_success_recorded(self):
         r = self.run_with(["ok\n"], 0)
         self.assertTrue(r.success)

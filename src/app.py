@@ -264,11 +264,16 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         return box
 
     def _on_trigger_clicked(self, *_args) -> None:
+        self.start_backup("backup-tab")
+
+    def start_backup(self, source: str) -> None:
+        """Start a backup unless one is running. `source` ("backup-tab" or
+        "tray") is what the Dashboard's Last backup line says it came from."""
         if self.runner.is_running:
             return
         self.trigger_btn.set_sensitive(False)
         self.status_line.set_text("Backup running...")
-        self.runner.start(on_done=self._on_backup_done_from_thread)
+        self.runner.start(on_done=self._on_backup_done_from_thread, source=source)
         self._set_running(True)
 
     def _set_running(self, running: bool) -> None:
