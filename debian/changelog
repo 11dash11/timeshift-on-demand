@@ -1,3 +1,18 @@
+timeshift-on-demand (0.1.0~dev31) UNRELEASED; urgency=low
+
+  * Backup helper: when Timeshift refuses to start because another copy
+    of it is running ("Another instance of this application is running"),
+    the failure reason now says so: "Timeshift is already running, so no
+    backup was made. If the Timeshift window is open, close it. Otherwise
+    it is probably Timeshift's own scheduled check: wait a few minutes and
+    try again." (An open Timeshift window holds the same lock, and waiting
+    alone won't clear it.) It used to be "Timeshift failed (exit code 1)". The
+    exit code is unchanged (1). Both the Backup tab/tray and the
+    login/resume prompt show the helper's reason, so both get it. New
+    harness case 2b (its reason must not mention an exit code).
+
+ -- JShin <11dash11@users.noreply.github.com>  Sat, 14 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev30) UNRELEASED; urgency=low
 
   * Dashboard footer: "the Retention lines above show what it's set to"
