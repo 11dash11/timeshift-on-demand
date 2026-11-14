@@ -89,6 +89,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         self.last_run_label = Gtk.Label(label="", xalign=0)
         self.last_run_label.set_line_wrap(True)
         self.snapshot_label = Gtk.Label(label="Loading snapshot history...", xalign=0)
+        self.snapshot_label.set_line_wrap(True)
         # How long Timeshift keeps Companion's backups (see retention.py).
         self.levels_label = Gtk.Label(label="", xalign=0)
         self.levels_label.set_line_wrap(True)
@@ -110,6 +111,7 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
             w.set_no_show_all(True)
             w.set_visible(False)
         self.disk_label = Gtk.Label(label="Loading disk usage...", xalign=0)
+        self.disk_label.set_line_wrap(True)
 
         advisory = Gtk.Label(
             label=(
@@ -244,6 +246,9 @@ class TimeshiftCompanionWindow(Gtk.ApplicationWindow):
         box.pack_start(self.trigger_btn, False, False, 0)
 
         self.status_line = Gtk.Label(label="Idle.", xalign=0)
+        # Failure reasons are full sentences: wrap them rather than widen
+        # the window.
+        self.status_line.set_line_wrap(True)
         box.pack_start(self.status_line, False, False, 0)
 
         scroller = Gtk.ScrolledWindow()

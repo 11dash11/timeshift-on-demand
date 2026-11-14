@@ -1,3 +1,13 @@
+timeshift-on-demand (0.1.0~dev32) UNRELEASED; urgency=low
+
+  * Backup tab status line, and the Dashboard's Snapshots and Backup
+    drive lines, now wrap long text instead of widening the window (seen
+    on the Samsung with dev31's "Timeshift is already running" reason;
+    the Dashboard lines can be long with an error or a long mount path).
+    Layout only, no logic change.
+
+ -- JShin <11dash11@users.noreply.github.com>  Sat, 14 Nov 2026 00:00:00 +0000
+
 timeshift-on-demand (0.1.0~dev31) UNRELEASED; urgency=low
 
   * Backup helper: when Timeshift refuses to start because another copy
